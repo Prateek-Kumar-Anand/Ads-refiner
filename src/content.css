@@ -1,0 +1,15 @@
+[data-ads-refiner-hidden="true"] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.ads-refiner-link-warning {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #b54708;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font: 12px/1.2 system-ui, sans-serif;
+}
