@@ -1,4 +1,3 @@
-const api = globalThis.adsRefinerApi;
 const params = new URLSearchParams(window.location.search);
 const target = params.get('target') || 'Unknown link';
 const reasons = JSON.parse(params.get('reasons') || '[]');
@@ -20,6 +19,6 @@ document.getElementById('goBack').addEventListener('click', () => {
 });
 
 document.getElementById('continue').addEventListener('click', async () => {
-  await api.runtime.sendMessage({ type: 'ALLOW_URL', url: target });
+  await chrome.runtime.sendMessage({ type: 'ALLOW_URL', url: target });
   window.location.href = target;
 });

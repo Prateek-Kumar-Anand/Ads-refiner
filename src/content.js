@@ -1,4 +1,3 @@
-const api = globalThis.adsRefinerApi;
 const WARNING_CLASS = 'ads-refiner-link-warning';
 
 
@@ -8,16 +7,13 @@ function getLocalUrlRisk(inputUrl) {
     const reasons = [];
     const hostname = url.hostname.toLowerCase();
     const pathname = url.pathname.toLowerCase();
-    const dangerousExtension = ['.apk', '.appinstaller', '.appx', '.bat', '.cmd', '.com', '.cpl', '.dll', '.dmg', '.exe', '.hta', '.iso', '.jar', '.js', '.jse', '.lnk', '.msi', '.msix', '.ps1', '.reg', '.scr', '.vbe', '.vbs', '.wsf']
+    const dangerousExtension = ['.apk', '.bat', '.cmd', '.com', '.cpl', '.dll', '.dmg', '.exe', '.hta', '.iso', '.jar', '.js', '.jse', '.msi', '.ps1', '.scr', '.vbe', '.vbs', '.wsf']
       .find((extension) => pathname.endsWith(extension));
 
     if (!['http:', 'https:'].includes(url.protocol)) reasons.push('The link does not use http or https.');
     if (url.protocol === 'http:') reasons.push('The link is not encrypted with HTTPS.');
     if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) reasons.push('The link uses a raw IP address.');
     if (hostname.includes('xn--')) reasons.push('The domain may be imitating another website.');
-    if (hostname.split('.').length > 5) reasons.push('The domain has many subdomains.');
-    if (/(bit\.ly|tinyurl\.com|t\.co|cutt\.ly|shorturl\.at)$/.test(hostname)) reasons.push('The link uses a URL shortener.');
-    if (/(\.buzz|\.click|\.quest|\.top|\.work|\.xyz)$/.test(hostname)) reasons.push('The link uses a domain ending commonly abused by spam or malware campaigns.');
     if (dangerousExtension) reasons.push(`The link points to a high-risk download type (${dangerousExtension}).`);
 
     if (reasons.length >= 2 || dangerousExtension || !['http:', 'https:'].includes(url.protocol)) {
@@ -81,7 +77,7 @@ document.addEventListener('click', (event) => {
   event.stopPropagation();
   showInlineWarning(anchor, risk);
 
-  const warningUrl = new URL(api.runtime.getURL('src/warning.html'));
+  const warningUrl = new URL(chrome.runtime.getURL('src/warning.html'));
   warningUrl.searchParams.set('target', anchor.href);
   warningUrl.searchParams.set('level', risk.level);
   warningUrl.searchParams.set('reasons', JSON.stringify(risk.reasons));

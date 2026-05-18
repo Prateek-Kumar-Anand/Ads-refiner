@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Ads Refiner Safe Link Guard",
   "description": "Blocks common ads, warns about suspicious links, and helps manage risky downloads from inside the browser.",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "declarativeNetRequest",
@@ -40,7 +40,6 @@
         "<all_urls>"
       ],
       "js": [
-        "src/browser-api.js",
         "src/content.js"
       ],
       "css": [
@@ -54,8 +53,7 @@
       "resources": [
         "src/warning.html",
         "src/warning.js",
-        "src/styles.css",
-        "src/browser-api.js"
+        "src/styles.css"
       ],
       "matches": [
         "<all_urls>"
