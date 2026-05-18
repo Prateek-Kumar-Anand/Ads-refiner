@@ -1,0 +1,48 @@
+{
+  "manifest_version": 2,
+  "name": "Ads Refiner Safe Link Guard",
+  "description": "Blocks common ads, warns about suspicious links, and helps manage risky downloads from inside the browser on Firefox for Android and desktop.",
+  "version": "1.1.0",
+  "applications": {
+    "gecko": {
+      "id": "ads-refiner@example.com",
+      "strict_min_version": "109.0"
+    }
+  },
+  "permissions": [
+    "<all_urls>",
+    "downloads",
+    "notifications",
+    "storage",
+    "tabs",
+    "webNavigation",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "background": {
+    "page": "src/background-firefox.html",
+    "persistent": false
+  },
+  "browser_action": {
+    "default_title": "Ads Refiner",
+    "default_popup": "src/popup.html"
+  },
+  "options_ui": {
+    "page": "src/options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/browser-api.js", "src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    "src/browser-api.js",
+    "src/warning.html",
+    "src/warning.js",
+    "src/styles.css"
+  ]
+}
