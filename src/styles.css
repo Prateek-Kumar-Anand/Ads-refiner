@@ -1,0 +1,174 @@
+:root {
+  color-scheme: light dark;
+  --bg: #eef4ff;
+  --card: #ffffff;
+  --text: #102a43;
+  --muted: #52606d;
+  --danger: #c2410c;
+  --danger-bg: #fff7ed;
+  --safe: #047857;
+  --safe-bg: #ecfdf5;
+  --border: #d9e2ec;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem;
+}
+
+.popup {
+  width: 380px;
+  min-height: 420px;
+  padding: 0.75rem;
+}
+
+.card {
+  width: min(100%, 680px);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 24px 80px rgb(16 42 67 / 14%);
+  padding: 1.25rem;
+}
+
+.warning-card {
+  border-top: 8px solid var(--danger);
+}
+
+h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+}
+
+h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+}
+
+p {
+  line-height: 1.5;
+}
+
+.eyebrow,
+.source {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.target {
+  border-radius: 12px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  overflow-wrap: anywhere;
+  padding: 0.75rem;
+}
+
+.reasons,
+.threat ul {
+  padding-left: 1.25rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.actions.compact {
+  margin-top: 0.5rem;
+}
+
+.button {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.button.full {
+  width: 100%;
+}
+
+.safe {
+  background: var(--safe);
+  color: white;
+}
+
+.danger {
+  background: var(--danger);
+  color: white;
+}
+
+.neutral {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.note,
+.status,
+.empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.toggle {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.threats {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.threat {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1220;
+    --card: #111827;
+    --text: #f8fafc;
+    --muted: #cbd5e1;
+    --border: #334155;
+  }
+
+  .neutral {
+    background: #334155;
+    color: #f8fafc;
+  }
+}
