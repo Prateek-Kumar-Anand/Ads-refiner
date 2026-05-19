@@ -1,0 +1,12 @@
+[
+  {"id":1001,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||google-analytics.com^","resourceTypes":["script","image","xmlhttprequest","ping"]}},
+  {"id":1002,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||googletagmanager.com/gtag/js","resourceTypes":["script"]}},
+  {"id":1003,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||connect.facebook.net/en_US/fbevents.js","resourceTypes":["script"]}},
+  {"id":1004,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||facebook.com/tr^","resourceTypes":["image","xmlhttprequest","ping"]}},
+  {"id":1005,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||static.hotjar.com^","resourceTypes":["script","xmlhttprequest"]}},
+  {"id":1006,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||script.hotjar.com^","resourceTypes":["script"]}},
+  {"id":1007,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||cdn.mxpnl.com^","resourceTypes":["script","xmlhttprequest"]}},
+  {"id":1008,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||api.mixpanel.com^","resourceTypes":["xmlhttprequest","ping"]}},
+  {"id":1009,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||clarity.ms^","resourceTypes":["script","xmlhttprequest"]}},
+  {"id":1010,"priority":1,"action":{"type":"block"},"condition":{"urlFilter":"||bat.bing.com^","resourceTypes":["script","xmlhttprequest","ping"]}}
+]
