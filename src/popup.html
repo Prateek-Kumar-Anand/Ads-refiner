@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ads Refiner</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="popup">
+    <main class="card">
+      <h1>Ads Refiner</h1>
+      <p class="status" id="status">Ad blocking, suspicious-link warnings, and risky-download blocking are on.</p>
+      <label class="toggle">
+        <input id="enabled" type="checkbox">
+        Enable protection
+      </label>
+      <div class="subsettings" aria-label="Protection modules">
+        <label class="toggle small">
+          <input id="blockAds" type="checkbox">
+          Block ads and trackers
+        </label>
+        <label class="toggle small">
+          <input id="warnLinks" type="checkbox">
+          Warn before suspicious links
+        </label>
+        <label class="toggle small">
+          <input id="blockRiskyDownloads" type="checkbox">
+          Stop risky downloads
+        </label>
+      </div>
+      <button id="scan" class="button safe full">Check browser safety</button>
+      <section>
+        <h2>Suspicious items</h2>
+        <div id="threats" class="threats"></div>
+      </section>
+      <p class="note">Browser extensions cannot scan your whole operating system. Ads Refiner checks links, tabs, and browser downloads it can access.</p>
+    </main>
+    <script src="browser-api.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
