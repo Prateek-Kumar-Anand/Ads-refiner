@@ -147,18 +147,6 @@ p {
   margin: 0.75rem 0;
 }
 
-.toggle.small {
-  margin: 0.35rem 0;
-  font-size: 0.86rem;
-}
-
-.subsettings {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  margin-bottom: 0.9rem;
-  padding: 0.35rem 0.75rem;
-}
-
 .threats {
   display: grid;
   gap: 0.75rem;

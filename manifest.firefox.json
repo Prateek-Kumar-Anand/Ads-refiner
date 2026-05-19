@@ -33,17 +33,9 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "src/browser-api.js",
-        "src/Readability.js",
-        "src/content.js"
-      ],
-      "css": [
-        "src/content.css"
-      ],
+      "matches": ["<all_urls>"],
+      "js": ["src/browser-api.js", "src/content.js"],
+      "css": ["src/content.css"],
       "run_at": "document_start"
     }
   ],
@@ -51,7 +43,6 @@
     "src/browser-api.js",
     "src/warning.html",
     "src/warning.js",
-    "src/styles.css",
-    "src/Readability.js"
+    "src/styles.css"
   ]
 }
