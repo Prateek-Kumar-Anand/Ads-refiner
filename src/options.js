@@ -1,7 +1,4 @@
-const api = globalThis.adsRefinerApi ?? {
-  storage: { local: chrome.storage.local },
-  runtime: { sendMessage: (msg) => chrome.runtime.sendMessage(msg) }
-};
+const api = globalThis.adsRefinerApi;
 const keys = ['blockTrackers', 'popupKiller', 'readerMode', 'sponsorBlock'];
 const saved = document.getElementById('saved');
 

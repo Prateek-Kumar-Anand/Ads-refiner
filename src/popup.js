@@ -1,20 +1,13 @@
-const api = globalThis.adsRefinerApi;
 const enabled = document.getElementById('enabled');
 const status = document.getElementById('status');
 const threats = document.getElementById('threats');
 const scan = document.getElementById('scan');
-const blockAds = document.getElementById('blockAds');
-const warnLinks = document.getElementById('warnLinks');
-const blockRiskyDownloads = document.getElementById('blockRiskyDownloads');
 
 init();
 
 async function init() {
-  const data = await api.storage.local.get(['enabled', 'blockAds', 'warnLinks', 'blockRiskyDownloads', 'blockedDownloads', 'lastScan']);
+  const data = await chrome.storage.local.get(['enabled', 'blockedDownloads', 'lastScan']);
   enabled.checked = data.enabled !== false;
-  blockAds.checked = data.blockAds !== false;
-  warnLinks.checked = data.warnLinks !== false;
-  blockRiskyDownloads.checked = data.blockRiskyDownloads !== false;
   renderStatus();
   renderThreats(data.blockedDownloads || [], data.lastScan);
 
@@ -23,49 +16,27 @@ async function init() {
   }
 }
 
-[enabled, blockAds, warnLinks, blockRiskyDownloads].forEach((input) => {
-  input.addEventListener('change', saveSettings);
-});
-
-async function saveSettings() {
-  const settings = {
-    enabled: enabled.checked,
-    blockAds: blockAds.checked,
-    warnLinks: warnLinks.checked,
-    blockRiskyDownloads: blockRiskyDownloads.checked
-  };
-  await api.storage.local.set(settings);
-  await api.runtime.sendMessage({ type: 'SET_SETTINGS', settings });
+enabled.addEventListener('change', async () => {
+  await chrome.storage.local.set({ enabled: enabled.checked });
   renderStatus();
-}
+});
 
 scan.addEventListener('click', runScan);
 
 async function runScan() {
   scan.disabled = true;
   scan.textContent = 'Checking...';
-  const result = await api.runtime.sendMessage({ type: 'RUN_SCAN' });
-  const data = await api.storage.local.get('blockedDownloads');
+  const result = await chrome.runtime.sendMessage({ type: 'RUN_SCAN' });
+  const data = await chrome.storage.local.get('blockedDownloads');
   renderThreats(data.blockedDownloads || [], result);
   scan.disabled = false;
   scan.textContent = 'Check browser safety';
 }
 
 function renderStatus() {
-  if (!enabled.checked) {
-    status.textContent = 'Protection is paused.';
-    return;
-  }
-
-  const activeModules = [
-    blockAds.checked && 'ad blocking',
-    warnLinks.checked && 'suspicious-link warnings',
-    blockRiskyDownloads.checked && 'risky-download blocking'
-  ].filter(Boolean);
-
-  status.textContent = activeModules.length
-    ? `${activeModules.join(', ')} are on.`
-    : 'Protection is enabled, but every module is turned off.';
+  status.textContent = enabled.checked
+    ? 'Ad blocking, suspicious-link warnings, and risky-download blocking are on.'
+    : 'Protection is paused.';
 }
 
 function renderThreats(blockedDownloads, lastScan) {
@@ -117,7 +88,7 @@ function createThreatCard(item) {
   ignore.className = 'button neutral';
   ignore.textContent = 'Ignore it';
   ignore.addEventListener('click', async () => {
-    await api.runtime.sendMessage({ type: 'IGNORE_THREAT', createdAt: item.createdAt });
+    await chrome.runtime.sendMessage({ type: 'IGNORE_THREAT', createdAt: item.createdAt });
     card.remove();
   });
 
@@ -125,7 +96,7 @@ function createThreatCard(item) {
   remove.className = 'button danger';
   remove.textContent = 'Solve it by deleting';
   remove.addEventListener('click', async () => {
-    await api.runtime.sendMessage({ type: 'DELETE_THREAT', threat: item, createdAt: item.createdAt });
+    await chrome.runtime.sendMessage({ type: 'DELETE_THREAT', threat: item, createdAt: item.createdAt });
     card.remove();
   });
 

@@ -6,10 +6,6 @@ const NOTIFICATION_ID = 'ads-refiner-threat-alert';
 const DEFAULT_SETTINGS = {
   enabled: true,
   blockAds: true,
-  blockTrackers: true,
-  popupKiller: true,
-  readerMode: true,
-  sponsorBlock: true,
   warnLinks: true,
   blockRiskyDownloads: true,
   blockedDownloads: [],
@@ -30,7 +26,7 @@ api.raw.storage?.onChanged?.addListener((changes, areaName) => {
   }
 
   const nextSettings = {};
-  for (const key of ['enabled', 'blockAds', 'blockTrackers', 'popupKiller', 'readerMode', 'sponsorBlock', 'warnLinks', 'blockRiskyDownloads']) {
+  for (const key of ['enabled', 'blockAds', 'warnLinks', 'blockRiskyDownloads']) {
     if (changes[key]) {
       nextSettings[key] = changes[key].newValue;
     }
@@ -210,7 +206,7 @@ async function showThreatNotification() {
     type: 'basic',
     iconUrl: api.runtime.getURL('src/icon.svg'),
     title: 'Ads Refiner warning',
-    message: 'suspicious virus and trojan might be in the system',
+    message: 'suspecious virus and torjan might be in the system',
     priority: 2
   });
 }
