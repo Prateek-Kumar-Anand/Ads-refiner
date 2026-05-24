@@ -1,23 +1,102 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Suspicious link blocked</title>
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body class="page">
-    <main class="card warning-card">
-      <p class="eyebrow">Ads Refiner safety check</p>
-      <h1>This link looks suspicious</h1>
-      <p id="target" class="target"></p>
-      <ul id="reasons" class="reasons"></ul>
-      <div class="actions">
-        <button id="goBack" class="button safe">Go back</button>
-        <button id="continue" class="button danger">Go on anyway</button>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>⚠ Suspicious link — Ads Refiner</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .warning-wrap { display: grid; min-height: 100vh; place-items: center; padding: 2rem 1rem; }
+    .warning-card { width: min(100%, 640px); border-radius: 24px; background: var(--card);
+      border: 1px solid var(--border); box-shadow: 0 32px 80px rgb(0 0 0/15%); overflow: hidden; }
+    .warning-stripe { height: 8px; }
+    .stripe-dangerous { background: linear-gradient(90deg, #dc2626, #f97316); }
+    .stripe-suspicious { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .warning-body { padding: 1.5rem; display: grid; gap: 1rem; }
+
+    .eyebrow { color: var(--muted); font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; margin: 0; }
+    h1 { margin: 0; font-size: 1.6rem; }
+    .level-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .level-badge { font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.7rem;
+      border-radius: 999px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .badge-dangerous { background: #fee2e2; color: #7f1d1d; }
+    .badge-suspicious { background: #fef3c7; color: #78350f; }
+    .score-ring { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 0.95rem; font-weight: 800; border: 3px solid; }
+    .ring-dangerous { border-color: #dc2626; color: #dc2626; background: #fee2e2; }
+    .ring-suspicious { border-color: #d97706; color: #d97706; background: #fef3c7; }
+
+    .target-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+      padding: 0.75rem 1rem; font-size: 0.88rem; overflow-wrap: anywhere; word-break: break-all; }
+    .reasons { padding-left: 1.2rem; margin: 0; display: grid; gap: 0.3rem; }
+    .reasons li { font-size: 0.88rem; line-height: 1.5; }
+
+    .breach-box { background: #fff1f2; border: 1px solid #fecdd3;
+      border-radius: 12px; padding: 0.75rem 1rem; }
+    .breach-box strong { color: #881337; font-size: 0.88rem; display: block; margin-bottom: 0.3rem; }
+    .breach-box p { margin: 0; font-size: 0.8rem; color: #9f1239; }
+
+    .trust-box { display: flex; align-items: center; gap: 0.75rem; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 1rem; font-size: 0.85rem; }
+    .trust-score { font-size: 1.1rem; font-weight: 800; }
+
+    .actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .actions .button { flex: 1; text-align: center; }
+    .note { color: var(--muted); font-size: 0.82rem; line-height: 1.5; margin: 0; }
+    #wlMsg { font-size: 0.82rem; color: var(--safe); font-weight: 600; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+<div class="warning-wrap">
+  <div class="warning-card">
+    <div class="warning-stripe" id="stripe"></div>
+    <div class="warning-body">
+
+      <p class="eyebrow">Ads Refiner — on-device safety check</p>
+
+      <div class="level-row">
+        <div>
+          <h1 id="headingText">This link looks suspicious</h1>
+        </div>
+        <div class="score-ring" id="scoreRing"></div>
+        <span class="level-badge" id="levelBadge"></span>
       </div>
-      <p class="note">Only continue when you trust the website and understand the risk.</p>
-    </main>
-    <script src="warning.js"></script>
-  </body>
+
+      <!-- Target URL -->
+      <div class="target-box" id="target"></div>
+
+      <!-- Risk reasons -->
+      <ul class="reasons" id="reasons"></ul>
+
+      <!-- Breach info (HIBP — free, no API key) -->
+      <div class="breach-box" id="breachBox" style="display:none">
+        <strong>⚠ This site has appeared in known data breaches.</strong>
+        <p id="breachDetail"></p>
+      </div>
+
+      <!-- Domain trust score -->
+      <div class="trust-box" id="trustBox" style="display:none">
+        <span>Trust score for this domain:</span>
+        <span class="trust-score" id="trustScore"></span>
+        <span id="trustLabel" style="font-size:0.8rem; color:var(--muted)"></span>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button id="goBack"      class="button safe">← Go back (safe)</button>
+        <button id="btnWhitelist" class="button neutral">🛡 Whitelist domain</button>
+        <button id="continue"    class="button danger">Proceed anyway →</button>
+      </div>
+      <p id="wlMsg"></p>
+
+      <p class="note">
+        All checks run entirely on your device — no data is sent to any server.
+        Only proceed if you fully trust this site.
+      </p>
+    </div>
+  </div>
+</div>
+<script src="warning.js"></script>
+</body>
 </html>

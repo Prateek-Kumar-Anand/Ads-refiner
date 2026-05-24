@@ -1,145 +1,155 @@
+/* src/styles.css — Ads Refiner design system */
+
+/* ─── Design tokens ──────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light dark;
-  --bg: #eef4ff;
-  --card: #ffffff;
-  --text: #102a43;
-  --muted: #52606d;
-  --danger: #c2410c;
-  --danger-bg: #fff7ed;
-  --safe: #047857;
-  --safe-bg: #ecfdf5;
-  --border: #d9e2ec;
+
+  /* Core palette */
+  --bg:       #f0f4ff;
+  --card:     #ffffff;
+  --text:     #0f172a;
+  --muted:    #475569;
+  --border:   #cbd5e1;
+
+  /* Semantic colours */
+  --danger:    #dc2626;
+  --danger-bg: #fef2f2;
+  --safe:      #059669;
+  --safe-bg:   #ecfdf5;
+  --warn:      #d97706;
+  --warn-bg:   #fffbeb;
+  --accent:    #4f46e5;
+  --accent-bg: #eef2ff;
+
+  /* Radii */
+  --r-sm:  8px;
+  --r-md:  14px;
+  --r-lg:  20px;
+  --r-xl:  28px;
+  --r-pill: 999px;
 }
 
-* {
-  box-sizing: border-box;
+/* ─── Dark mode — precise, high-contrast tokens ──────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:       #0c1120;
+    --card:     #111827;
+    --text:     #f1f5f9;
+    --muted:    #94a3b8;
+    --border:   #1e293b;
+    --danger-bg: #2c0b0b;
+    --safe-bg:   #052e16;
+    --warn-bg:   #1c1000;
+    --accent-bg: #1e1b4b;
+  }
+
+  /* Keep neutral buttons readable in dark mode */
+  .neutral, .button.neutral {
+    background: #1e293b;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+  }
+  .neutral:hover, .button.neutral:hover { background: #273549; }
+
+  /* Sandbox warning overlay in dark mode */
+  .ar-sandbox-warning {
+    background: #1e1b0c;
+    border-color: #92400e;
+    color: #fde68a;
+  }
 }
+
+/* ─── Reset & base ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { font-size: 16px; }
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
 }
 
+/* ─── Layout helpers ─────────────────────────────────────────────────────────── */
 .page {
   display: grid;
   min-height: 100vh;
-  place-items: center;
-  padding: 2rem;
+  place-items: start center;
+  padding: 2rem 1rem;
 }
 
-.popup {
-  width: 380px;
-  min-height: 420px;
-  padding: 0.75rem;
-}
-
+/* ─── Card ───────────────────────────────────────────────────────────────────── */
 .card {
   width: min(100%, 680px);
   border: 1px solid var(--border);
-  border-radius: 24px;
+  border-radius: var(--r-xl);
   background: var(--card);
-  box-shadow: 0 24px 80px rgb(16 42 67 / 14%);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 8%);
   padding: 1.25rem;
 }
 
-.warning-card {
-  border-top: 8px solid var(--danger);
-}
-
-h1 {
-  margin: 0 0 0.75rem;
-  font-size: 1.75rem;
-}
-
-h2 {
-  margin: 1rem 0 0.5rem;
-  font-size: 1rem;
-}
-
-h3 {
-  margin: 0;
-  overflow-wrap: anywhere;
-  font-size: 0.95rem;
-}
-
-p {
-  line-height: 1.5;
-}
+/* ─── Typography ─────────────────────────────────────────────────────────────── */
+h1 { margin: 0 0 0.75rem; font-size: 1.75rem; font-weight: 800; }
+h2 { margin: 0.75rem 0 0.5rem; font-size: 1.05rem; font-weight: 700; }
+h3 { margin: 0; font-size: 0.95rem; font-weight: 600; overflow-wrap: anywhere; }
+p  { margin: 0 0 0.5rem; line-height: 1.55; }
 
 .eyebrow,
 .source {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.target {
-  border-radius: 12px;
-  background: var(--danger-bg);
-  color: var(--danger);
-  overflow-wrap: anywhere;
-  padding: 0.75rem;
-}
-
-.reasons,
-.threat ul {
-  padding-left: 1.25rem;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.actions.compact {
-  margin-top: 0.5rem;
-}
-
+/* ─── Buttons ────────────────────────────────────────────────────────────────── */
 .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   cursor: pointer;
-  font-weight: 700;
-  padding: 0.75rem 1rem;
-}
-
-.button:disabled {
-  cursor: wait;
-  opacity: 0.65;
-}
-
-.button.full {
-  width: 100%;
-}
-
-.safe {
-  background: var(--safe);
-  color: white;
-}
-
-.danger {
-  background: var(--danger);
-  color: white;
-}
-
-.neutral {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-.note,
-.status,
-.empty {
-  color: var(--muted);
+  font-family: inherit;
   font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.65rem 1.15rem;
+  text-decoration: none;
+  transition: opacity 0.15s, filter 0.15s;
+  white-space: nowrap;
 }
+.button:hover    { filter: brightness(1.07); }
+.button:active   { filter: brightness(0.93); }
+.button:disabled { cursor: not-allowed; opacity: 0.55; }
+.button.full     { width: 100%; }
 
+.safe    { background: var(--safe);    color: #ffffff; }
+.danger  { background: var(--danger);  color: #ffffff; }
+.neutral { background: #e5e7eb;        color: #111827; }
+.accent  { background: var(--accent);  color: #ffffff; }
+
+/* ─── Inputs ─────────────────────────────────────────────────────────────────── */
+.text-input {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 0.5rem 0.75rem;
+  transition: border-color 0.15s;
+  width: 100%;
+  outline: none;
+}
+.text-input:focus { border-color: var(--accent); }
+
+/* ─── Toggle ─────────────────────────────────────────────────────────────────── */
 .toggle {
   align-items: center;
   display: flex;
@@ -147,28 +157,108 @@ p {
   margin: 0.75rem 0;
 }
 
-.threats {
-  display: grid;
-  gap: 0.75rem;
+/* ─── Badges ─────────────────────────────────────────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: var(--r-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+}
+.tag-safe     { background: var(--safe-bg);   color: var(--safe);   }
+.tag-danger   { background: var(--danger-bg); color: var(--danger); }
+.tag-warn     { background: var(--warn-bg);   color: var(--warn);   }
+.tag-accent   { background: var(--accent-bg); color: var(--accent); }
+
+/* ─── Warning card ───────────────────────────────────────────────────────────── */
+.warning-card {
+  border-top: 8px solid var(--danger);
 }
 
-.threat {
-  border: 1px solid var(--border);
-  border-radius: 16px;
+.target {
+  border-radius: var(--r-md);
+  background: var(--danger-bg);
+  color: var(--danger);
+  overflow-wrap: anywhere;
+  word-break: break-all;
   padding: 0.75rem;
+  font-size: 0.88rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1220;
-    --card: #111827;
-    --text: #f8fafc;
-    --muted: #cbd5e1;
-    --border: #334155;
-  }
+.reasons { padding-left: 1.25rem; }
 
-  .neutral {
-    background: #334155;
-    color: #f8fafc;
-  }
+/* ─── Actions row ────────────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
 }
+.actions.compact { margin-top: 0.4rem; }
+
+/* ─── Threats list ───────────────────────────────────────────────────────────── */
+.threats { display: grid; gap: 0.65rem; }
+.threat  {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 0.75rem;
+  transition: border-color 0.15s;
+}
+.threat:hover { border-color: var(--accent); }
+.threat ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* ─── Utility ────────────────────────────────────────────────────────────────── */
+.note,
+.status,
+.empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* ─── Download sandbox warning overlay (injected by content.js) ──────────────── */
+.ar-sandbox-warning {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 2147483647;
+  max-width: 380px;
+  background: #fffbeb;
+  border: 1.5px solid #d97706;
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 8px 32px rgb(0 0 0/18%);
+  font-family: system-ui, sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #78350f;
+}
+.ar-sandbox-warning code {
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  font-weight: 700;
+}
+.ar-sandbox-btns {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.ar-btn-cancel,
+.ar-btn-continue {
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.45rem 0.9rem;
+}
+.ar-btn-cancel   { background: #e5e7eb; color: #111; }
+.ar-btn-continue { background: #d97706; color: #fff; }

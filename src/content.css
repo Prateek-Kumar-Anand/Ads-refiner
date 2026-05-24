@@ -1,15 +1,105 @@
-[data-ads-refiner-hidden="true"] {
+/* src/content.css — Ads Refiner content styles */
+
+/* ─── Cosmetic ad hiding ─────────────────────────────────────────────────────── */
+[data-ar-hidden="true"] {
   display: none !important;
   visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
-.ads-refiner-link-warning {
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid #b54708;
+/* ─── Inline link warning badge ──────────────────────────────────────────────── */
+.ads-refiner-warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border: 1.5px solid #b45309;
   border-radius: 999px;
-  background: #fff7ed;
-  color: #9a3412;
-  font: 12px/1.2 system-ui, sans-serif;
+  background: #fffbeb;
+  color: #92400e;
+  font: 700 11px/1.3 system-ui, sans-serif;
+  cursor: default;
+  vertical-align: middle;
+  white-space: nowrap;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Prevent page styles from leaking in */
+  all: revert;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border: 1.5px solid #b45309;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #92400e;
+  font: 700 11px/1.3 system-ui, sans-serif;
+  margin-left: 0.4rem;
+  z-index: 2147483646;
 }
+
+@media (prefers-color-scheme: dark) {
+  .ads-refiner-warning-badge {
+    background: #1c1000;
+    border-color: #92400e;
+    color: #fde68a;
+  }
+}
+
+/* ─── Download sandbox warning ───────────────────────────────────────────────── */
+.ar-sandbox-warning {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 2147483647;
+  max-width: 380px;
+  background: #fffbeb;
+  border: 1.5px solid #d97706;
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #78350f;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ar-sandbox-warning {
+    background: #1c1202;
+    border-color: #92400e;
+    color: #fde68a;
+  }
+  .ar-btn-cancel { background: #374151; color: #f9fafb; }
+}
+
+.ar-sandbox-warning code {
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.ar-sandbox-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ar-btn-cancel, .ar-btn-continue {
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+}
+.ar-btn-cancel   { background: #e5e7eb; color: #111827; }
+.ar-btn-continue { background: #d97706; color: #fff; }

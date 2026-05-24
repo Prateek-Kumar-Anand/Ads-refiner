@@ -1,26 +1,162 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ads Refiner</title>
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body class="popup">
-    <main class="card">
-      <h1>Ads Refiner</h1>
-      <p class="status" id="status">Ad blocking and safe-link checks are on.</p>
-      <label class="toggle">
-        <input id="enabled" type="checkbox">
-        Enable protection
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ads Refiner</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { width: 400px; min-height: 460px; padding: 0; }
+    .popup-wrap { padding: 0.9rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .header { display: flex; align-items: center; justify-content: space-between; }
+    .logo   { display: flex; align-items: center; gap: 0.5rem; }
+    .logo img { width: 28px; height: 28px; }
+    .logo h1  { margin: 0; font-size: 1.1rem; }
+    .header-actions { display: flex; gap: 0.4rem; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .stat-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.6rem 0.5rem; text-align: center;
+    }
+    .stat-num   { font-size: 1.4rem; font-weight: 800; line-height: 1; color: var(--accent); }
+    .stat-label { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem;
+                  text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .toggle-group { display: grid; gap: 0.4rem; }
+    .mini-toggle  {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.4rem 0.7rem; font-size: 0.85rem;
+    }
+    .mini-toggle label { display: flex; align-items: center; justify-content: space-between;
+                         gap: 0.4rem; cursor: pointer; width: 100%; }
+    .switch { position: relative; display: inline-block; width: 38px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: var(--border); border-radius: 20px;
+              transition: 0.25s; cursor: pointer; }
+    .slider::before { content:''; position: absolute; height: 14px; width: 14px;
+                      left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.25s; }
+    input:checked + .slider { background: var(--safe); }
+    input:checked + .slider::before { transform: translateX(18px); }
+
+    .section-title { font-size: 0.78rem; font-weight: 700; color: var(--muted);
+                     text-transform: uppercase; letter-spacing: 0.08em; margin: 0; }
+    .threats { display: grid; gap: 0.6rem; max-height: 220px; overflow-y: auto; }
+    .threat { border: 1px solid var(--border); border-radius: 12px; padding: 0.65rem; }
+    .threat-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.4rem; }
+    .threat h3 { margin: 0; font-size: 0.88rem; overflow-wrap: anywhere; flex: 1; }
+    .threat ul { margin: 0.3rem 0 0; padding-left: 1.2rem; font-size: 0.8rem; color: var(--muted); }
+    .threat ul li { margin-bottom: 0.15rem; }
+    .risk-badge { font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.45rem;
+                  border-radius: 999px; white-space: nowrap; }
+    .risk-dangerous { background: #fee2e2; color: #7f1d1d; }
+    .risk-suspicious { background: #fef3c7; color: #78350f; }
+    .empty { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1rem 0; }
+    .action-sm { font-size: 0.75rem; padding: 0.25rem 0.6rem; }
+    .footer { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .btn-ghost { background: var(--bg); border: 1px solid var(--border); color: var(--text);
+                 border-radius: 999px; font-size: 0.78rem; padding: 0.4rem 0.8rem; cursor: pointer;
+                 font-weight: 600; transition: background 0.15s; }
+    .btn-ghost:hover { background: var(--border); }
+    #status { font-size: 0.82rem; color: var(--muted); margin: 0; }
+    .free-pill { background: var(--safe-bg); color: var(--safe); border: 1px solid var(--safe);
+                 border-radius: 999px; font-size: 0.65rem; font-weight: 800;
+                 padding: 0.1rem 0.45rem; margin-left: 0.3rem; vertical-align: middle; }
+  </style>
+</head>
+<body>
+<div class="popup-wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <img src="icon.svg" alt="">
+      <h1>Ads Refiner <span class="free-pill">FREE</span></h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost" id="btnDashboard" title="Analytics dashboard">📊</button>
+      <button class="btn-ghost" id="btnOptions" title="Settings">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <p id="status"></p>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="statAds">—</div>
+      <div class="stat-label">Ads Blocked</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statTrackers">—</div>
+      <div class="stat-label">Trackers</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statUrls">—</div>
+      <div class="stat-label">URLs Blocked</div>
+    </div>
+  </div>
+
+  <!-- Toggles -->
+  <div class="toggle-group">
+    <div class="mini-toggle">
+      <label><span>🛡 Protection enabled</span>
+        <label class="switch"><input id="tgEnabled" type="checkbox"><span class="slider"></span></label>
       </label>
-      <button id="scan" class="button safe full">Check browser safety</button>
-      <section>
-        <h2>Suspicious items</h2>
-        <div id="threats" class="threats"></div>
-      </section>
-      <p class="note">Browser extensions cannot scan your whole operating system. Ads Refiner checks links, tabs, and browser downloads it can access.</p>
-    </main>
-    <script src="popup.js"></script>
-  </body>
+    </div>
+    <div class="mini-toggle">
+      <label><span>🚫 Block ads</span>
+        <label class="switch"><input id="tgAds" type="checkbox"><span class="slider"></span></label>
+      </label>
+    </div>
+    <div class="mini-toggle">
+      <label><span>👣 Block trackers</span>
+        <label class="switch"><input id="tgTrackers" type="checkbox"><span class="slider"></span></label>
+      </label>
+    </div>
+    <div class="mini-toggle">
+      <label><span>🔗 Warn suspicious links</span>
+        <label class="switch"><input id="tgLinks" type="checkbox"><span class="slider"></span></label>
+      </label>
+    </div>
+    <div class="mini-toggle">
+      <label><span>⬇ Block risky downloads</span>
+        <label class="switch"><input id="tgDownloads" type="checkbox"><span class="slider"></span></label>
+      </label>
+    </div>
+    <div class="mini-toggle">
+      <label><span>🎨 Cosmetic ad hiding</span>
+        <label class="switch"><input id="tgCosmetic" type="checkbox"><span class="slider"></span></label>
+      </label>
+    </div>
+  </div>
+
+  <!-- Scan -->
+  <button id="scan" class="button safe full">🔍 Scan browser now</button>
+
+  <!-- Whitelist quick-add -->
+  <div style="display:flex; gap:0.4rem;">
+    <input id="whitelistInput" class="text-input" placeholder="Whitelist a domain…" style="flex:1">
+    <button id="btnWhitelistAdd" class="button neutral action-sm">Add</button>
+  </div>
+
+  <!-- Threats -->
+  <div>
+    <p class="section-title">Suspicious items <span id="threatCount"></span></p>
+    <div id="threats" class="threats"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <button class="btn-ghost" id="btnExportJson">⬇ Export JSON</button>
+    <button class="btn-ghost" id="btnExportCsv">⬇ Export CSV</button>
+    <button class="btn-ghost" id="btnClearLog">🗑 Clear log</button>
+  </div>
+
+</div>
+<script src="popup.js"></script>
+</body>
 </html>

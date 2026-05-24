@@ -1,147 +1,269 @@
-import { getUrlRisk, isDangerousDownload } from './safety.js';
+// src/background.js — Chrome MV3 Service Worker
+// BUG FIXES applied:
+//  #1  Extension own-page URLs (chrome-extension://) now skipped in nav listener
+//  #2  Context menu only opens warning page for non-safe URLs
+//  #6  contextMenus.removeAll() called before create to prevent duplicate-ID error on update
+//  #9  Unused imports (isLikelyAdUrl, trustLabel) removed
 
-const LAST_ALERT_KEY = 'lastThreatAlert';
-const WARNING_PAGE = chrome.runtime.getURL('src/warning.html');
-const NOTIFICATION_ID = 'ads-refiner-threat-alert';
+import {
+  getUrlRisk, isDangerousDownload,
+  checkDomainBreach
+} from './safety.js';
+import { loadWhitelist, addToWhitelist, removeFromWhitelist, getWhitelist } from './whitelist.js';
+import { logEvent, getLog, clearLog, exportAsJson, exportAsCsv, incrementCounter, getCounters } from './logger.js';
+import { getReputation, updateReputation, getAllReputation } from './reputation.js';
 
-chrome.runtime.onInstalled.addListener(async () => {
-  await chrome.storage.local.set({
-    enabled: true,
-    blockedDownloads: [],
-    lastScan: null
+// ─── Constants ─────────────────────────────────────────────────────────────────
+const WARNING_PAGE   = chrome.runtime.getURL('src/warning.html');
+const DASHBOARD_PAGE = chrome.runtime.getURL('src/dashboard.html');
+const NOTIFICATION_ID = 'ads-refiner-threat';
+const LAST_ALERT_KEY  = 'lastThreatAlert';
+
+const DEFAULT_SETTINGS = {
+  enabled: true,
+  blockAds: true,
+  blockTrackers: true,
+  warnLinks: true,
+  blockRiskyDownloads: true,
+  cosmeticBlocking: true,
+  blockedDownloads: [],
+  lastScan: null
+};
+
+// ─── Startup ──────────────────────────────────────────────────────────────────
+
+chrome.runtime.onInstalled.addListener(async (details) => {
+  const existing = await chrome.storage.local.get(Object.keys(DEFAULT_SETTINGS));
+  const merged = { ...DEFAULT_SETTINGS };
+  for (const [k, v] of Object.entries(existing)) {
+    if (v !== undefined) merged[k] = v;
+  }
+  await chrome.storage.local.set(merged);
+
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/options.html') });
+  }
+
+  // FIX #6: Remove existing menu items first to prevent "duplicate id" error on extension update
+  await chrome.contextMenus.removeAll();
+  chrome.contextMenus.create({
+    id: 'checkLinkRisk',
+    title: 'Check this link with Ads Refiner',
+    contexts: ['link']
   });
 });
+
+// ─── Navigation Listener ──────────────────────────────────────────────────────
 
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
-  if (details.frameId !== 0 || details.url.startsWith(WARNING_PAGE)) {
-    return;
-  }
+  // FIX #1: Skip sub-frames, the warning page itself, AND all extension pages
+  if (details.frameId !== 0) return;
+  if (details.url.startsWith('chrome-extension://')) return;  // <-- CRITICAL FIX
+  if (details.url.startsWith('chrome://')) return;
+  if (details.url.startsWith('about:')) return;
+  if (details.url.startsWith(WARNING_PAGE)) return;
 
-  const { enabled = true } = await chrome.storage.local.get('enabled');
-  if (!enabled) {
-    return;
-  }
+  const { enabled, warnLinks } = await chrome.storage.local.get(['enabled', 'warnLinks']);
+  if (!enabled || !warnLinks) return;
 
   const allowed = await consumeAllowedUrl(details.url);
-  if (allowed) {
-    return;
-  }
+  if (allowed) return;
 
-  const risk = getUrlRisk(details.url);
-  if (risk.level === 'safe') {
-    return;
-  }
+  const whitelist = await loadWhitelist();
+  const risk = getUrlRisk(details.url, { whitelist });
+  if (risk.whitelisted || risk.level === 'safe') return;
 
-  const warningUrl = new URL(WARNING_PAGE);
-  warningUrl.searchParams.set('target', details.url);
-  warningUrl.searchParams.set('level', risk.level);
-  warningUrl.searchParams.set('reasons', JSON.stringify(risk.reasons));
-  await chrome.tabs.update(details.tabId, { url: warningUrl.href });
+  const urlObj = new URL(details.url);
+  await updateReputation(urlObj.hostname, { type: 'flagged', reason: risk.reasons[0] });
+  await logEvent('url_blocked', { url: details.url, level: risk.level, reasons: risk.reasons });
+  await incrementCounter('urlsBlocked');
+
+  const warningUrl = buildWarningUrl(details.url, risk);
+  await chrome.tabs.update(details.tabId, { url: warningUrl });
 });
 
-chrome.downloads.onCreated.addListener(async (downloadItem) => {
-  const { enabled = true } = await chrome.storage.local.get('enabled');
-  if (!enabled) {
-    return;
-  }
+// Record reputation for all completed navigations
+chrome.webNavigation.onCompleted.addListener(async (details) => {
+  if (details.frameId !== 0) return;
+  try {
+    const url = new URL(details.url);
+    if (['http:', 'https:'].includes(url.protocol)) {
+      await updateReputation(url.hostname, { type: 'visit' });
+    }
+  } catch { /* ignore */ }
+});
 
-  const risk = isDangerousDownload(downloadItem);
-  if (!risk.dangerous) {
-    return;
-  }
+// ─── Download Listener ────────────────────────────────────────────────────────
 
-  await chrome.downloads.cancel(downloadItem.id).catch(() => undefined);
-  await recordThreat({
-    id: downloadItem.id,
-    url: downloadItem.finalUrl || downloadItem.url,
-    filename: downloadItem.filename || 'unknown file',
+chrome.downloads.onCreated.addListener(async (item) => {
+  await handleDownload(item);
+});
+
+chrome.downloads.onChanged.addListener(async (delta) => {
+  if (!delta.filename?.current) return;
+  const [item] = await chrome.downloads.search({ id: delta.id });
+  if (item) await handleDownload(item);
+});
+
+async function handleDownload(item) {
+  const { enabled, blockRiskyDownloads } = await chrome.storage.local.get(['enabled', 'blockRiskyDownloads']);
+  if (!enabled || !blockRiskyDownloads) return;
+
+  const risk = isDangerousDownload(item);
+  if (!risk.dangerous) return;
+
+  await chrome.downloads.cancel(item.id).catch(() => {});
+  const threat = {
+    id: item.id,
+    url: item.finalUrl || item.url,
+    filename: item.filename || 'unknown',
     reasons: risk.reasons,
-    createdAt: new Date().toISOString()
-  });
+    createdAt: new Date().toISOString(),
+    source: 'Blocked download'
+  };
+  await recordThreat(threat);
+  await logEvent('download_blocked', { url: threat.url, filename: threat.filename, reasons: threat.reasons });
+  await incrementCounter('downloadsBlocked');
+  await showThreatNotification(`Blocked dangerous download: ${threat.filename || 'unknown file'}`);
+}
 
-  await showThreatNotification();
-});
+// ─── Context Menu ─────────────────────────────────────────────────────────────
 
-chrome.notifications.onClicked.addListener(async (notificationId) => {
-  if (notificationId !== NOTIFICATION_ID) {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId !== 'checkLinkRisk' || !info.linkUrl) return;
+  const whitelist = await loadWhitelist();
+  const risk = getUrlRisk(info.linkUrl, { whitelist });
+
+  // FIX #2: Only open warning page for non-safe URLs
+  if (risk.level === 'safe') {
+    await chrome.notifications.create('ar-safe-link', {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('src/icon.svg'),
+      title: 'Ads Refiner — Link looks safe',
+      message: `No threats detected for: ${info.linkUrl.slice(0, 80)}`,
+      priority: 0
+    });
     return;
   }
 
-  await runBrowserSafetyCheck();
-  await chrome.tabs.create({ url: chrome.runtime.getURL('src/popup.html?scan=1') });
-  await chrome.notifications.clear(notificationId);
+  const warningUrl = buildWarningUrl(info.linkUrl, risk);
+  chrome.tabs.create({ url: warningUrl });
 });
+
+// ─── Notification Handler ─────────────────────────────────────────────────────
+
+chrome.notifications.onClicked.addListener(async (id) => {
+  if (id !== NOTIFICATION_ID) return;
+  await chrome.tabs.create({ url: chrome.runtime.getURL('src/popup.html?scan=1') });
+  await chrome.notifications.clear(id);
+});
+
+// ─── Message Handler ──────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === 'CHECK_URL') {
-    sendResponse(getUrlRisk(message.url));
-    return true;
-  }
-
-  if (message?.type === 'ALLOW_URL') {
-    allowUrl(message.url).then(sendResponse);
-    return true;
-  }
-
-  if (message?.type === 'RUN_SCAN') {
-    runBrowserSafetyCheck().then(sendResponse);
-    return true;
-  }
-
-  if (message?.type === 'IGNORE_THREAT') {
-    ignoreThreat(message.createdAt).then(sendResponse);
-    return true;
-  }
-
-  if (message?.type === 'DELETE_THREAT') {
-    deleteThreat(message.createdAt, message.threat).then(sendResponse);
-    return true;
-  }
-
-  return false;
+  handleMessage(message).then(sendResponse).catch((err) => sendResponse({ ok: false, error: err.message }));
+  return true;
 });
+
+async function handleMessage(msg) {
+  switch (msg?.type) {
+    case 'CHECK_URL': {
+      const whitelist = await loadWhitelist();
+      const risk = getUrlRisk(msg.url, { whitelist });
+      const rep = await getReputation(new URL(msg.url).hostname).catch(() => null);
+      return { ...risk, reputation: rep };
+    }
+    case 'ALLOW_URL':        return allowUrl(msg.url);
+    case 'RUN_SCAN':         return runBrowserSafetyCheck();
+    case 'IGNORE_THREAT':    return ignoreThreat(msg.createdAt);
+    case 'DELETE_THREAT':    return deleteThreat(msg.createdAt, msg.threat);
+    case 'GET_SETTINGS':     return chrome.storage.local.get(Object.keys(DEFAULT_SETTINGS));
+    case 'SET_SETTINGS':     return saveSettings(msg.settings || {});
+    case 'WHITELIST_ADD':    return addToWhitelist(msg.domain);
+    case 'WHITELIST_REMOVE': return removeFromWhitelist(msg.domain);
+    case 'WHITELIST_GET':    return getWhitelist();
+    case 'GET_LOG':          return getLog(msg.filter);
+    case 'CLEAR_LOG':        return clearLog();
+    case 'EXPORT_LOG_JSON':  return exportAsJson();
+    case 'EXPORT_LOG_CSV':   return exportAsCsv();
+    case 'GET_COUNTERS':     return getCounters();
+    case 'GET_REPUTATION':   return getAllReputation();
+    case 'CHECK_BREACH':     return checkDomainBreach(msg.domain);
+    case 'OPEN_DASHBOARD':
+      await chrome.tabs.create({ url: DASHBOARD_PAGE });
+      return { ok: true };
+    default:
+      return { ok: false, error: 'Unknown message type.' };
+  }
+}
+
+// ─── URL Allow List (session) ─────────────────────────────────────────────────
 
 async function allowUrl(url) {
   const { allowedUrls = {} } = await chrome.storage.session.get('allowedUrls');
-  allowedUrls[url] = Date.now() + 2 * 60 * 1000;
+  allowedUrls[url] = Date.now() + 5 * 60 * 1000;
   await chrome.storage.session.set({ allowedUrls });
   return { ok: true };
 }
 
 async function consumeAllowedUrl(url) {
   const { allowedUrls = {} } = await chrome.storage.session.get('allowedUrls');
-  const expiresAt = allowedUrls[url];
-  if (!expiresAt) {
-    return false;
-  }
-
+  const exp = allowedUrls[url];
+  if (!exp) return false;
   delete allowedUrls[url];
   await chrome.storage.session.set({ allowedUrls });
-  return expiresAt > Date.now();
+  return exp > Date.now();
 }
+
+// ─── Threat Management ────────────────────────────────────────────────────────
 
 async function recordThreat(threat) {
   const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
-  blockedDownloads.unshift(threat);
+  const deduped = blockedDownloads.filter((t) => !(t.id === threat.id && t.url === threat.url));
+  deduped.unshift(threat);
   await chrome.storage.local.set({
     [LAST_ALERT_KEY]: threat,
-    blockedDownloads: blockedDownloads.slice(0, 50)
+    blockedDownloads: deduped.slice(0, 100)
   });
 }
 
-async function showThreatNotification() {
+async function showThreatNotification(message = 'A potential threat was detected.') {
   await chrome.notifications.create(NOTIFICATION_ID, {
     type: 'basic',
-    iconUrl: 'src/icon.svg',
-    title: 'Ads Refiner warning',
-    message: 'suspecious virus and torjan might be in the system',
+    iconUrl: chrome.runtime.getURL('src/icon.svg'),
+    title: 'Ads Refiner — Threat Blocked',
+    message,
     priority: 2
   });
 }
 
+async function ignoreThreat(createdAt) {
+  if (!createdAt) return { ok: true };
+  const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
+  await chrome.storage.local.set({
+    blockedDownloads: blockedDownloads.filter((t) => t.createdAt !== createdAt)
+  });
+  return { ok: true };
+}
+
+async function deleteThreat(createdAt, suppliedThreat) {
+  const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
+  const threat = blockedDownloads.find((t) => t.createdAt === createdAt) ?? suppliedThreat;
+  if (threat?.source === 'Open tab' && threat.tabId) {
+    await chrome.tabs.remove(threat.tabId).catch(() => {});
+  } else if (threat?.id) {
+    await chrome.downloads.removeFile(threat.id).catch(() => {});
+    await chrome.downloads.erase({ id: threat.id }).catch(() => {});
+  }
+  return ignoreThreat(createdAt);
+}
+
+// ─── Safety Scan ──────────────────────────────────────────────────────────────
+
 async function runBrowserSafetyCheck() {
-  const [downloads, tabs] = await Promise.all([
-    chrome.downloads.search({ limit: 25, orderBy: ['-startTime'] }),
+  const whitelist = await loadWhitelist();
+  const [downloads = [], tabs = []] = await Promise.all([
+    chrome.downloads.search({ limit: 50, orderBy: ['-startTime'] }),
     chrome.tabs.query({})
   ]);
 
@@ -154,18 +276,24 @@ async function runBrowserSafetyCheck() {
       url: item.finalUrl || item.url,
       reasons: risk.reasons,
       createdAt: item.startTime || new Date().toISOString(),
-      state: item.state
+      state: item.state,
+      source: 'Recent download'
     }));
 
   const suspiciousTabs = tabs
-    .map((tab) => ({ tab, risk: tab.url ? getUrlRisk(tab.url) : { level: 'safe', reasons: [] } }))
-    .filter(({ risk }) => risk.level !== 'safe')
+    .map((tab) => ({
+      tab,
+      risk: tab.url ? getUrlRisk(tab.url, { whitelist }) : { level: 'safe', score: 0, reasons: [] }
+    }))
+    .filter(({ risk }) => risk.level !== 'safe' && !risk.whitelisted)
     .map(({ tab, risk }) => ({
       id: tab.id,
       title: tab.title || tab.url,
       url: tab.url,
       reasons: risk.reasons,
-      level: risk.level
+      level: risk.level,
+      score: risk.score,
+      source: 'Open tab'
     }));
 
   const lastScan = {
@@ -178,25 +306,48 @@ async function runBrowserSafetyCheck() {
   return lastScan;
 }
 
-async function ignoreThreat(createdAt) {
-  const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
-  const updated = blockedDownloads.filter((threat) => threat.createdAt !== createdAt);
-  await chrome.storage.local.set({ blockedDownloads: updated });
+// ─── Settings ─────────────────────────────────────────────────────────────────
+
+async function saveSettings(settings) {
+  const allowed = new Set(Object.keys(DEFAULT_SETTINGS));
+  const safe = Object.fromEntries(
+    Object.entries(settings).filter(([k, v]) => allowed.has(k) && v !== undefined)
+  );
+  await chrome.storage.local.set(safe);
+  await syncRulesets(safe);
   return { ok: true };
 }
 
-async function deleteThreat(createdAt, suppliedThreat) {
-  const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
-  const threat = blockedDownloads.find((item) => item.createdAt === createdAt) || suppliedThreat;
+async function syncRulesets(settings) {
+  const { blockAds, blockTrackers, enabled } = {
+    ...(await chrome.storage.local.get(['blockAds', 'blockTrackers', 'enabled'])),
+    ...settings
+  };
 
-  if (threat?.source === 'Open tab' && threat.tabId) {
-    await chrome.tabs.remove(threat.tabId).catch(() => undefined);
-  }
+  const enableIds = [];
+  const disableIds = [];
 
-  if (threat?.id && threat?.source !== 'Open tab') {
-    await chrome.downloads.removeFile(threat.id).catch(() => undefined);
-    await chrome.downloads.erase({ id: threat.id }).catch(() => undefined);
-  }
+  if (enabled && blockAds) enableIds.push('ads_refiner_rules');
+  else disableIds.push('ads_refiner_rules');
 
-  return ignoreThreat(createdAt);
+  if (enabled && blockTrackers) enableIds.push('trackers_refiner_rules');
+  else disableIds.push('trackers_refiner_rules');
+
+  await chrome.declarativeNetRequest.updateEnabledRulesets({
+    enableRulesetIds: enableIds,
+    disableRulesetIds: disableIds
+  });
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function buildWarningUrl(target, risk) {
+  const u = new URL(WARNING_PAGE);
+  u.searchParams.set('target', target);
+  u.searchParams.set('level', risk.level);
+  u.searchParams.set('score', String(risk.score ?? 0));
+  u.searchParams.set('reasons', JSON.stringify(risk.reasons));
+  return u.href;
+}
+
+syncRulesets({}).catch(() => {});

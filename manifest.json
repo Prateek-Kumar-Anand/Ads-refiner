@@ -1,17 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Ads Refiner Safe Link Guard",
-  "description": "Blocks common ads, warns about suspicious links, and helps manage risky downloads from inside the browser.",
-  "version": "1.0.0",
+  "description": "Blocks ads & trackers, warns about phishing links, download protection. 100% free \u2014 no API keys, no accounts, no subscriptions.",
+  "version": "2.0.1",
   "minimum_chrome_version": "116",
   "permissions": [
     "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess",
     "downloads",
     "notifications",
     "storage",
     "tabs",
-    "webNavigation"
+    "webNavigation",
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -31,6 +31,11 @@
         "id": "ads_refiner_rules",
         "enabled": true,
         "path": "rules/ads.json"
+      },
+      {
+        "id": "trackers_refiner_rules",
+        "enabled": true,
+        "path": "rules/trackers.json"
       }
     ]
   },
@@ -53,6 +58,7 @@
       "resources": [
         "src/warning.html",
         "src/warning.js",
+        "src/dashboard.html",
         "src/styles.css"
       ],
       "matches": [

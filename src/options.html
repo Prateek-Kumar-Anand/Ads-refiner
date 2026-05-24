@@ -1,16 +1,111 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Ads Refiner options</title>
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body class="page">
-    <main class="card">
-      <h1>Ads Refiner options</h1>
-      <p>Use the toolbar popup to turn protection on or off, run a browser safety check, and review suspicious downloads.</p>
-      <p class="note">For privacy and browser security reasons, this extension cannot scan or delete arbitrary system files. It can cancel risky browser downloads and remove downloaded files when the browser grants access.</p>
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ads Refiner — Settings</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .options-wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1rem; display: grid; gap: 1rem; }
+    .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 1.25rem; }
+    .section-card h2 { margin: 0 0 1rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.4rem; }
+    .field { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+      padding: 0.65rem 0; border-bottom: 1px solid var(--border); }
+    .field:last-child { border-bottom: none; padding-bottom: 0; }
+    .field-info { flex: 1; }
+    .field-info label { display: block; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .field-info p  { margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: var(--border); border-radius: 24px; cursor: pointer; transition: 0.25s; }
+    .slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.25s; }
+    input:checked + .slider { background: var(--safe); }
+    input:checked + .slider::before { transform: translateX(20px); }
+    .saved-msg { color: var(--safe); font-size: 0.85rem; font-weight: 600; min-height: 1.2em; }
+    .free-badge { display:inline-block; background:var(--safe-bg); color:var(--safe);
+      font-size:0.7rem; font-weight:700; padding:0.1rem 0.5rem; border-radius:999px;
+      border:1px solid var(--safe); margin-left:0.4rem; vertical-align:middle; }
+    h1 { margin: 0 0 0.25rem; font-size: 1.6rem; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin: 0 0 0.5rem; }
+    .note-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+      padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body style="display:block; padding:0;">
+
+<div class="options-wrap">
+  <div>
+    <h1>⚙️ Ads Refiner Settings <span class="free-badge">100% FREE</span></h1>
+    <p class="subtitle">All features are completely free — no accounts, no API keys, no subscriptions.</p>
+  </div>
+
+  <!-- Core protection -->
+  <div class="section-card">
+    <h2>🛡 Core Protection</h2>
+
+    <div class="field">
+      <div class="field-info">
+        <label for="enabled">Enable protection</label>
+        <p>Master switch — turns all blocking and warnings on or off.</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="enabled"><span class="slider"></span></label>
+    </div>
+
+    <div class="field">
+      <div class="field-info">
+        <label for="blockAds">Block ads</label>
+        <p>Blocks requests to 19 known ad networks using built-in rules. No external service needed.</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="blockAds"><span class="slider"></span></label>
+    </div>
+
+    <div class="field">
+      <div class="field-info">
+        <label for="blockTrackers">Block trackers</label>
+        <p>Blocks 40 analytics and tracking services (Google Analytics, Facebook Pixel, Hotjar, etc.).</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="blockTrackers"><span class="slider"></span></label>
+    </div>
+
+    <div class="field">
+      <div class="field-info">
+        <label for="warnLinks">Warn on suspicious links</label>
+        <p>Shows a safety warning before navigating to risky URLs. Detection runs entirely on-device.</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="warnLinks"><span class="slider"></span></label>
+    </div>
+
+    <div class="field">
+      <div class="field-info">
+        <label for="blockRiskyDownloads">Block risky downloads</label>
+        <p>Automatically cancels downloads of high-risk file types (.exe, .msi, .ps1, .bat, etc.).</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="blockRiskyDownloads"><span class="slider"></span></label>
+    </div>
+
+    <div class="field">
+      <div class="field-info">
+        <label for="cosmeticBlocking">Cosmetic ad blocking</label>
+        <p>Hides ad containers using CSS selectors injected into pages. Runs locally, no network calls.</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="cosmeticBlocking"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- Save -->
+  <div class="section-card" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.25rem;">
+    <span class="saved-msg" id="savedMsg"></span>
+    <button class="button safe" id="saveBtn">Save settings</button>
+  </div>
+
+  <!-- Info -->
+  <div class="note-box">
+    <strong>🔒 Privacy first:</strong> Every feature in Ads Refiner runs entirely inside your browser.
+    No data is sent to any external server. No accounts required. No API keys. Completely free, forever.
+  </div>
+</div>
+
+<script src="browser-api.js"></script>
+<script src="options.js"></script>
+</body>
 </html>
