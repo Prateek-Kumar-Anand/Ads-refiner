@@ -6,12 +6,14 @@
 
   // ─── Constants ───────────────────────────────────────────────────────────────
 
+  // FIX #5: .js/.jse removed from general dangerous list (false positives on CDN scripts)
   const DANGEROUS_EXTENSIONS = [
     '.apk', '.appinstaller', '.appx', '.bat', '.cmd', '.com', '.cpl',
     '.dll', '.dmg', '.exe', '.gadget', '.hta', '.inf', '.iso', '.jar',
-    '.js', '.jse', '.lnk', '.msi', '.msix', '.ps1', '.reg', '.scr',
+    '.lnk', '.msi', '.msix', '.ps1', '.reg', '.scr',
     '.vbe', '.vbs', '.wsf', '.xbap'
   ];
+  const DOWNLOAD_ONLY_DANGEROUS = ['.js', '.jse'];
 
   const ARCHIVE_EXTENSIONS = ['.7z', '.gz', '.rar', '.tar', '.zip'];
   const TRUSTED_PROTOCOLS = ['http:', 'https:'];
@@ -137,7 +139,9 @@
     var filename = (downloadItem.filename || '').toLowerCase();
     var risk = getUrlRisk(url);
     var urlPath = url.toLowerCase().split('?')[0];
-    var ext = DANGEROUS_EXTENSIONS.find(function(e) { return filename.endsWith(e) || urlPath.endsWith(e); });
+    // FIX #5: include .js/.jse for explicit downloads
+    var allDangerousForDownload = DANGEROUS_EXTENSIONS.concat(DOWNLOAD_ONLY_DANGEROUS);
+    var ext = allDangerousForDownload.find(function(e) { return filename.endsWith(e) || urlPath.endsWith(e); });
     var archiveExt = ARCHIVE_EXTENSIONS.find(function(e) { return filename.includes(e) || urlPath.includes(e); });
     var isSuspiciousArchive = archiveExt && ARCHIVE_LURE_PATTERN.test(filename + ' ' + urlPath);
     var reasons = new Set(risk.reasons);

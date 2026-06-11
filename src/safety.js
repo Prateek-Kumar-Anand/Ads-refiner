@@ -3,12 +3,20 @@
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// FIX #5: Removed .js and .jse from DANGEROUS_EXTENSIONS.
+// .js is a legitimate file type used by every website (CDNs, npm packages, etc.)
+// Blocking it causes massive false positives on normal browsing.
+// Script files are only dangerous as explicit user-initiated downloads — 
+// that case is handled separately in isDangerousDownload() via DOWNLOAD_ONLY_DANGEROUS.
 export const DANGEROUS_EXTENSIONS = [
   '.apk', '.appinstaller', '.appx', '.bat', '.cmd', '.com', '.cpl',
   '.dll', '.dmg', '.exe', '.gadget', '.hta', '.inf', '.iso', '.jar',
-  '.js', '.jse', '.lnk', '.msi', '.msix', '.ps1', '.reg', '.scr',
+  '.lnk', '.msi', '.msix', '.ps1', '.reg', '.scr',
   '.vbe', '.vbs', '.wsf', '.xbap'
 ];
+
+// Extensions only dangerous when explicitly downloaded (not when loaded as resources)
+export const DOWNLOAD_ONLY_DANGEROUS = ['.js', '.jse'];
 
 export const ARCHIVE_EXTENSIONS = ['.7z', '.gz', '.rar', '.tar', '.zip'];
 
@@ -171,7 +179,9 @@ export function isDangerousDownload(downloadItem) {
   const risk = getUrlRisk(url);
 
   const urlPath = url.toLowerCase().split('?')[0];
-  const ext = DANGEROUS_EXTENSIONS.find(
+  // FIX #5: Also flag .js/.jse when they are explicit downloads
+  const allDangerousForDownload = [...DANGEROUS_EXTENSIONS, ...DOWNLOAD_ONLY_DANGEROUS];
+  const ext = allDangerousForDownload.find(
     (e) => filename.endsWith(e) || urlPath.endsWith(e)
   );
   const archiveExt = ARCHIVE_EXTENSIONS.find(
@@ -225,10 +235,17 @@ export async function checkDomainBreach(domain) {
   if (HIBP_CACHE.has(domain)) return HIBP_CACHE.get(domain);
 
   try {
+    // BUG FIX: AbortController with 5s timeout — was hanging indefinitely on slow networks
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(
       `https://haveibeenpwned.com/api/v3/breaches?domain=${encodeURIComponent(domain)}`,
-      { headers: { 'User-Agent': 'Ads-Refiner-Extension' } }
+      {
+        headers: { 'User-Agent': 'Ads-Refiner-Extension' },
+        signal: controller.signal
+      }
     );
+    clearTimeout(timer);
     if (!res.ok) return [];
     const breaches = await res.json();
     const result = breaches.slice(0, 5).map((b) => ({

@@ -78,7 +78,7 @@ if (api.raw.contextMenus?.onClicked) {
     if (risk.level === 'safe') {
       await api.notifications.create('ar-safe-link', {
         type: 'basic',
-        iconUrl: api.runtime.getURL('src/icon.svg'),
+        iconUrl: api.runtime.getURL('src/icons/icon128.png'),
         title: 'Ads Refiner — Link looks safe',
         message: `No threats detected for: ${info.linkUrl.slice(0, 80)}`,
         priority: 0
@@ -265,7 +265,7 @@ async function recordThreat(threat) {
 async function showThreatNotification(message = 'A threat was detected and blocked.') {
   await api.notifications.create(NOTIFICATION_ID, {
     type: 'basic',
-    iconUrl: api.runtime.getURL('src/icon.svg'),
+    iconUrl: api.runtime.getURL('src/icons/icon128.png'),
     title: 'Ads Refiner — Threat Blocked',
     message,
     priority: 2

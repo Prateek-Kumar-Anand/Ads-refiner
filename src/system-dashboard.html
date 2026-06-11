@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ads Refiner — System Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { padding: 0; margin: 0; }
+    .dashboard { max-width: 860px; margin: 0 auto; padding: 1.5rem 1.2rem; }
+
+    /* ── Header ── */
+    .page-header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.6rem;
+    }
+    .page-header h1 { margin: 0; font-size: 1.4rem; }
+    .page-header .acts { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+    /* ── Top stat row ── */
+    .top-stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.75rem; margin-bottom: 1rem;
+    }
+    .stat-tile {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem 0.9rem; text-align: center;
+    }
+    .stat-tile .num {
+      font-size: 1.9rem; font-weight: 900;
+      color: var(--accent); line-height: 1;
+    }
+    .stat-tile .lbl {
+      font-size: 0.7rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.07em; margin-top: 0.25rem;
+    }
+    .stat-tile .sub {
+      font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem;
+    }
+
+    /* ── RAM card ── */
+    .ram-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem; margin-bottom: 1rem;
+    }
+    .ram-card h2 { margin: 0 0 0.75rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem; }
+    .ram-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.6rem;
+    }
+    .ram-item {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.65rem 0.75rem;
+    }
+    .ram-item .r-val {
+      font-size: 1.3rem; font-weight: 800; color: var(--accent);
+    }
+    .ram-item .r-lbl {
+      font-size: 0.68rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.1rem;
+    }
+    .ram-bar-wrap {
+      margin-top: 0.75rem;
+    }
+    .ram-bar-label {
+      display: flex; justify-content: space-between;
+      font-size: 0.72rem; color: var(--muted); margin-bottom: 0.25rem;
+    }
+    .ram-bar-track {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 999px; height: 10px; overflow: hidden;
+    }
+    .ram-bar-fill {
+      height: 100%; border-radius: 999px;
+      background: var(--accent);
+      transition: width 0.6s ease;
+    }
+    .ram-bar-fill.warn  { background: var(--warn); }
+    .ram-bar-fill.danger { background: var(--danger); }
+    .ram-note {
+      font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem;
+    }
+    .live-dot {
+      display: inline-block; width: 7px; height: 7px;
+      border-radius: 50%; background: var(--safe);
+      animation: pulse 1.4s ease-in-out infinite;
+      margin-right: 0.3rem;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ── Time cards ── */
+    .time-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem; margin-bottom: 1rem;
+    }
+    .time-card h2 {
+      margin: 0 0 0.75rem; font-size: 0.95rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .time-card h2 .acts { display: flex; gap: 0.4rem; }
+
+    /* ── Site time table ── */
+    .site-table-wrap { overflow-x: auto; max-height: 300px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th {
+      text-align: left; padding: 0.35rem 0.6rem;
+      color: var(--muted); font-size: 0.72rem;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--card);
+    }
+    td {
+      padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg); }
+
+    /* inline bar inside table */
+    .inline-bar {
+      display: inline-block; height: 6px; border-radius: 3px;
+      background: var(--accent); vertical-align: middle;
+      margin-right: 0.4rem; transition: width 0.4s;
+    }
+
+    /* ── Favicon ── */
+    .site-favicon {
+      width: 14px; height: 14px; border-radius: 2px;
+      margin-right: 0.4rem; vertical-align: middle;
+      object-fit: contain;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      color: var(--muted); font-size: 0.88rem;
+      text-align: center; padding: 1.5rem 0;
+    }
+
+    /* ── Footer ── */
+    .dash-footer {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+<div class="dashboard">
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1>🖥 System Dashboard</h1>
+    <div class="acts">
+      <button class="button neutral" id="btnRefresh">↻ Refresh</button>
+      <button class="button danger"  id="btnClearTime" style="font-size:0.8rem">🗑 Clear time data</button>
+    </div>
+  </div>
+
+  <!-- Top stats: Chrome session + today total -->
+  <div class="top-stat-row">
+    <div class="stat-tile">
+      <div class="num" id="sessionTime">—</div>
+      <div class="lbl">Chrome session time</div>
+      <div class="sub" id="sessionSub">since extension loaded</div>
+    </div>
+    <div class="stat-tile">
+      <div class="num" id="todayTotal">—</div>
+      <div class="lbl">Browsing today</div>
+      <div class="sub" id="todaySub" style="color:var(--safe)"></div>
+    </div>
+    <div class="stat-tile">
+      <div class="num" id="allTimeTotal">—</div>
+      <div class="lbl">All-time browsing</div>
+      <div class="sub" id="sitesTracked"></div>
+    </div>
+  </div>
+
+  <!-- RAM card -->
+  <div class="ram-card">
+    <h2><span class="live-dot"></span> RAM usage <span style="font-size:0.72rem;font-weight:400;color:var(--muted);margin-left:auto" id="ramUpdated"></span></h2>
+    <div class="ram-grid">
+      <div class="ram-item">
+        <div class="r-val" id="ramTotal">—</div>
+        <div class="r-lbl">JS heap used</div>
+      </div>
+      <div class="ram-item">
+        <div class="r-val" id="ramLargest">—</div>
+        <div class="r-lbl">Heap allocated</div>
+      </div>
+      <div class="ram-item">
+        <div class="r-val" id="ramProcesses">—</div>
+        <div class="r-lbl">Heap limit</div>
+      </div>
+    </div>
+    <div class="ram-bar-wrap">
+      <div class="ram-bar-label">
+        <span>Chrome RAM</span>
+        <span id="ramPct">—</span>
+      </div>
+      <div class="ram-bar-track">
+        <div class="ram-bar-fill" id="ramBar" style="width:0%"></div>
+      </div>
+    </div>
+    <p class="ram-note" id="ramNote">Loading process data…</p>
+  </div>
+
+  <!-- Time today per site -->
+  <div class="time-card">
+    <h2>
+      ⏱ Time per site — today
+      <div class="acts">
+        <select id="todaySort" class="text-input" style="width:auto;font-size:0.78rem;padding:0.25rem 0.5rem">
+          <option value="today">By today</option>
+          <option value="total">By all-time</option>
+        </select>
+      </div>
+    </h2>
+    <div class="site-table-wrap">
+      <table>
+        <thead><tr>
+          <th>Site</th>
+          <th>Today</th>
+          <th>Share</th>
+        </tr></thead>
+        <tbody id="todayBody"><tr><td colspan="3" class="empty-state">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- All-time per site -->
+  <div class="time-card">
+    <h2>📅 All-time per site</h2>
+    <div class="site-table-wrap">
+      <table>
+        <thead><tr>
+          <th>Site</th>
+          <th>Total</th>
+          <th>Days visited</th>
+          <th>Daily avg</th>
+        </tr></thead>
+        <tbody id="allTimeBody"><tr><td colspan="4" class="empty-state">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="dash-footer">
+    <span style="font-size:0.75rem;color:var(--muted)">✓ All data stored locally — never sent anywhere.</span>
+  </div>
+
+</div>
+<script src="crossbrowser.js"></script>
+<script src="favicon.js"></script>
+<script src="system-dashboard.js"></script>
+</body>
+</html>

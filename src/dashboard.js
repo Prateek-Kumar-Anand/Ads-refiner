@@ -2,7 +2,8 @@
 
 'use strict';
 
-const _rt = (typeof browser !== 'undefined' ? browser : chrome).runtime;
+// FIX #6: Use shared CR shim (crossbrowser.js)
+const _rt = CR.runtime;
 const $ = (id) => document.getElementById(id);
 
 // ─── Main Load ────────────────────────────────────────────────────────────────
@@ -55,10 +56,22 @@ function renderTypeChart(log) {
     const label = type.replace(/_/g, ' ');
     const row = document.createElement('div');
     row.className = 'bar-row';
-    row.innerHTML = `
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${label}">${label}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-      <span class="bar-val">${fmt(count)}</span>`;
+    // Safe DOM: label comes from log event type stored by extension itself
+    // but we still use textContent to be defensive
+    const labelSpan = document.createElement('span');
+    labelSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    labelSpan.title = label;
+    labelSpan.textContent = label;
+    const track = document.createElement('div');
+    track.className = 'bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill';
+    fill.style.width = pct + '%';
+    track.append(fill);
+    const val = document.createElement('span');
+    val.className = 'bar-val';
+    val.textContent = fmt(count);
+    row.append(labelSpan, track, val);
     container.append(row);
   }
 }

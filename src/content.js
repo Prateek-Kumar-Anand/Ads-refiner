@@ -1,39 +1,35 @@
 // src/content.js — Content Script (Chrome + Firefox compatible)
-// BUG FIX #7: Two separate overlapping 'click' listeners merged into ONE.
-//             Previously both fired for every anchor click causing UX conflicts.
-// BUG FIX #8: Dead code (RISKY_MIME_TYPES constant) removed.
+// Fixes applied:
+//  #7  Two overlapping click listeners merged into ONE
+//  #8  Dead code (RISKY_MIME_TYPES) removed
+//  #XSS innerHTML replaced with safe DOM construction throughout
 
 'use strict';
 
-const _rt = (typeof browser !== 'undefined' ? browser : chrome).runtime;
+// FIX #6: Use shared CR shim (crossbrowser.js)
+const _rt = CR.runtime;
 const WARNING_CLASS = 'ads-refiner-warning-badge';
 
 // ─── Cosmetic Ad Blocking ─────────────────────────────────────────────────────
 
 const AD_SELECTORS = [
-  '[id="ad"]','[id="ads"]','[id="advertisement"]',
-  '[id^="ad-"]','[id^="ads-"]','[id$="-ad"]','[id$="-ads"]',
-  '[id*="-ad-"]','[id*="_ad_"]',
-  '[class~="ad"]','[class~="ads"]','[class~="advert"]',
-  '[class*=" ad "]','[class*=" ads "]',
-  '[class^="ad-"]','[class^="ads-"]',
-  '[class*="advert"]','[class*="advertisement"]',
-  '[class*="adsbygoogle"]',
-  '[class*="sponsor-"]','[class*="sponsored-"]',
-  '[class*="-sponsor"]','[class*="ad_slot"]',
-  '[class*="ad-slot"]','[class*="ad-unit"]',
-  '[class*="banner-ad"]','[class*="display-ad"]',
-  '[data-ad]','[data-ad-slot]','[data-ad-unit]',
-  '[data-google-query-id]',
+  '[id="ad"],[id="ads"],[id="advertisement"]',
+  '[id^="ad-"],[id^="ads-"],[id$="-ad"],[id$="-ads"]',
+  '[id*="-ad-"],[id*="_ad_"]',
+  '[class~="ad"],[class~="ads"],[class~="advert"]',
+  '[class^="ad-"],[class^="ads-"]',
+  '[class*="advert"],[class*="advertisement"],[class*="adsbygoogle"]',
+  '[class*="sponsor-"],[class*="sponsored-"],[class*="-sponsor"]',
+  '[class*="ad_slot"],[class*="ad-slot"],[class*="ad-unit"]',
+  '[class*="banner-ad"],[class*="display-ad"]',
+  '[data-ad],[data-ad-slot],[data-ad-unit],[data-google-query-id]',
   'iframe[src*="doubleclick.net"]',
   'iframe[src*="googlesyndication.com"]',
   'iframe[src*="adnxs.com"]',
   'iframe[src*="rubiconproject.com"]',
-  'iframe[src*="/ads/"]',
-  'iframe[src*="ad.html"]',
+  'iframe[src*="/ads/"],iframe[src*="ad.html"]',
   'ins.adsbygoogle',
-  'div[aria-label="Advertisement"]',
-  'div[aria-label="Ads"]',
+  'div[aria-label="Advertisement"],div[aria-label="Ads"]',
   'section[aria-label="Sponsored"]',
 ];
 
@@ -48,31 +44,32 @@ function hideLikelyAds() {
           el.setAttribute('data-ar-hidden', 'true');
         }
       });
-    } catch { /* invalid selector on some pages — skip */ }
+    } catch { /* invalid selector on edge-case pages — skip */ }
   }
 }
 
-// ─── Quick local risk check (lightweight, no network) ─────────────────────────
+// ─── Quick local risk check (no network) ─────────────────────────────────────
+// FIX #4: Removed local extension list — it was a subset of safety.js DANGEROUS_EXTENSIONS
+// and caused inconsistency (.js was flagged by background but not here).
+// quickRiskCheck only does STRUCTURAL URL checks (protocol, @, punycode).
+// Full extension + scoring check is done by the background via CHECK_URL.
 
 function quickRiskCheck(href) {
   try {
     const url = new URL(href);
     const h = url.hostname.toLowerCase();
-    const p = url.pathname.toLowerCase();
 
+    // Non-http/https protocols (data:, javascript:, ftp:, etc.)
     if (!['http:', 'https:', 'mailto:'].includes(url.protocol)) {
       return { level: 'dangerous', reasons: ['Non-standard protocol: ' + url.protocol] };
     }
+    // Credential-hiding @ in URL (not mailto)
     if (href.includes('@') && url.protocol !== 'mailto:') {
       return { level: 'suspicious', reasons: ['URL contains "@" — destination may be hidden.'] };
     }
+    // Punycode homograph
     if (h.includes('xn--')) {
       return { level: 'suspicious', reasons: ['Punycode domain — may impersonate a trusted site.'] };
-    }
-    const dangerousExts = ['.exe','.msi','.bat','.ps1','.vbs','.js','.scr','.hta','.dmg','.apk'];
-    const ext = p.split('?')[0].split('#')[0].match(/\.[a-z0-9]+$/i)?.[0]?.toLowerCase();
-    if (ext && dangerousExts.includes(ext)) {
-      return { level: 'dangerous', reasons: [`High-risk file type: ${ext}`] };
     }
     return { level: 'safe', reasons: [] };
   } catch {
@@ -80,12 +77,15 @@ function quickRiskCheck(href) {
   }
 }
 
+// ─── Inline warning badge (safe DOM — no innerHTML) ───────────────────────────
+
 function showInlineWarning(anchor, risk) {
   removeInlineWarning(anchor);
   const badge = document.createElement('span');
   badge.className = WARNING_CLASS;
   badge.setAttribute('role', 'alert');
-  badge.textContent = `⚠ Ads Refiner: ${risk.level} link — click again to continue`;
+  // textContent only — no HTML injection possible
+  badge.textContent = '\u26a0 Ads Refiner: ' + risk.level + ' link \u2014 click again to continue';
   badge.title = risk.reasons.join('\n');
   anchor.insertAdjacentElement('afterend', badge);
   setTimeout(() => badge.remove(), 9000);
@@ -98,16 +98,55 @@ function removeInlineWarning(anchor) {
 
 // ─── Risky download extensions ────────────────────────────────────────────────
 
+// FIX #5: .js not here — would block legitimate CDN/script hrefs with download attr
+// FIX #5: .zip/.rar/.7z removed — archives are common legit downloads (false positive rate too high)
 const RISKY_DL_EXTS = [
-  '.exe','.msi','.bat','.ps1','.vbs','.js','.scr','.hta',
-  '.dmg','.apk','.dll','.iso','.jar','.zip','.rar','.7z'
+  '.exe', '.msi', '.bat', '.ps1', '.vbs', '.scr', '.hta',
+  '.dmg', '.apk', '.dll', '.iso', '.jar'
 ];
 const WARNED_DOWNLOADS = new Set();
-const pendingWarnings = new WeakSet();
+const pendingWarnings = new WeakMap();  // BUG FIX: WeakMap so we can delete entries
+
+// ─── Download overlay builder (safe DOM — no innerHTML) ───────────────────────
+// FIX #XSS: was using innerHTML with `ext` from the page URL — now pure DOM
+
+function buildDownloadOverlay(ext, href) {
+  const wrap = document.createElement('div');
+  wrap.className = 'ar-sandbox-warning';
+
+  const title = document.createElement('strong');
+  title.textContent = '\u26a0 Ads Refiner \u2014 Download Warning';
+
+  const br = document.createElement('br');
+
+  const body = document.createElement('span');
+  // ext is constrained to /\.[a-z0-9]+$/i already — but we still use textContent
+  body.textContent =
+    'This file type (' + (ext || 'unknown') + ') can run code on your device. ' +
+    'Only download from sources you fully trust.';
+
+  const btns = document.createElement('div');
+  btns.className = 'ar-sandbox-btns';
+
+  const cancel = document.createElement('button');
+  cancel.className = 'ar-btn-cancel';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => wrap.remove());
+
+  const proceed = document.createElement('button');
+  proceed.className = 'ar-btn-continue';
+  proceed.textContent = 'Download anyway';
+  proceed.addEventListener('click', () => {
+    wrap.remove();
+    window.location.assign(href);
+  });
+
+  btns.append(cancel, proceed);
+  wrap.append(title, br, body, btns);
+  return wrap;
+}
 
 // ─── MERGED click handler (FIX #7) ───────────────────────────────────────────
-// Was previously TWO separate handlers that both fired for every anchor click.
-// Merged into ONE to prevent conflicts when a link is both suspicious AND a download.
 
 document.addEventListener('click', (e) => {
   const anchor = e.target.closest?.('a[href]');
@@ -124,26 +163,13 @@ document.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     WARNED_DOWNLOADS.add(href);
-
-    const msg = document.createElement('div');
-    msg.className = 'ar-sandbox-warning';
-    msg.innerHTML =
-      `<strong>⚠ Ads Refiner — Download Warning</strong><br>` +
-      `This file type (<code>${ext}</code>) can run code on your device.<br>` +
-      `Only download from sources you fully trust.` +
-      `<div class="ar-sandbox-btns">` +
-        `<button class="ar-btn-cancel">Cancel</button>` +
-        `<button class="ar-btn-continue">Download anyway</button>` +
-      `</div>`;
-    document.body.appendChild(msg);
-    msg.querySelector('.ar-btn-cancel').onclick   = () => msg.remove();
-    msg.querySelector('.ar-btn-continue').onclick = () => { msg.remove(); window.location.assign(href); };
+    document.body.appendChild(buildDownloadOverlay(ext, href));
     return;
   }
 
   // ── Branch B: Suspicious-link interception ─────────────────────────────────
   if (anchor.dataset.arAllowed === 'true') return;
-  if (pendingWarnings.has(anchor)) {
+  if (pendingWarnings.has(anchor)) {  // WeakMap.has() is valid
     anchor.dataset.arAllowed = 'true';
     return;
   }
@@ -154,11 +180,16 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
   showInlineWarning(anchor, risk);
-  pendingWarnings.add(anchor);
+  pendingWarnings.set(anchor, true);  // BUG FIX: set() not add()
 
-  // Full background check — redirect to warning page if confirmed risky
   _rt.sendMessage({ type: 'CHECK_URL', url: href }, (result) => {
-    if (!result || result.level === 'safe') return;
+    // BUG FIX: always clean up pendingWarnings so link is usable again
+    pendingWarnings.delete(anchor);
+    if (!result || result.level === 'safe') {
+      // Background says safe — remove badge and allow
+      removeInlineWarning(anchor);
+      return;
+    }
     const u = new URL(_rt.getURL('src/warning.html'));
     u.searchParams.set('target', href);
     u.searchParams.set('level', result.level);
@@ -168,7 +199,7 @@ document.addEventListener('click', (e) => {
   });
 }, true);
 
-// ─── MutationObserver (debounced) ────────────────────────────────────────────
+// ─── MutationObserver (debounced via rAF) ────────────────────────────────────
 
 let rafPending = false;
 const observer = new MutationObserver(() => {

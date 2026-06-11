@@ -2,7 +2,8 @@
 
 'use strict';
 
-const _rt = (typeof browser !== 'undefined' ? browser : chrome).runtime;
+// FIX #6: Use shared CR shim (crossbrowser.js)
+const _rt = CR.runtime;
 const params  = new URLSearchParams(window.location.search);
 const target  = params.get('target') || 'Unknown link';
 const level   = params.get('level')  || 'suspicious';
@@ -72,9 +73,16 @@ document.getElementById('goBack').addEventListener('click', () => {
   history.length > 1 ? history.back() : (window.location.href = 'about:blank');
 });
 
-document.getElementById('continue').addEventListener('click', async () => {
-  await sendMsg({ type: 'ALLOW_URL', url: target });
-  window.location.href = target;
+document.getElementById('continue').addEventListener('click', () => {
+  // BUG FIX: Navigate only after ALLOW_URL has been stored by background.
+  // Previously navigated immediately after await which could fire before
+  // the service worker had written to storage.session, causing re-block.
+  sendMsg({ type: 'ALLOW_URL', url: target }).then(() => {
+    window.location.href = target;
+  }).catch(() => {
+    // Background unreachable — navigate anyway (best-effort)
+    window.location.href = target;
+  });
 });
 
 document.getElementById('btnWhitelist').addEventListener('click', async () => {

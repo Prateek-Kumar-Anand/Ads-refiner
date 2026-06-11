@@ -30,14 +30,28 @@
       background: var(--bg); border: 1px solid var(--border);
       border-radius: 10px; padding: 0.4rem 0.7rem; font-size: 0.85rem;
     }
-    .mini-toggle label { display: flex; align-items: center; justify-content: space-between;
-                         gap: 0.4rem; cursor: pointer; width: 100%; }
-    .switch { position: relative; display: inline-block; width: 38px; height: 20px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; inset: 0; background: var(--border); border-radius: 20px;
-              transition: 0.25s; cursor: pointer; }
-    .slider::before { content:''; position: absolute; height: 14px; width: 14px;
-                      left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.25s; }
+    .mini-toggle .toggle-label {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.4rem; cursor: pointer; width: 100%;
+      user-select: none;
+    }
+    .toggle-text { flex: 1; }
+
+    /* Compact toggle switch */
+    .switch { position: relative; display: inline-block; width: 38px; height: 20px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .slider {
+      position: absolute; inset: 0;
+      background: var(--border); border-radius: 20px;
+      transition: 0.25s; cursor: pointer;
+    }
+    .slider::before {
+      content:''; position: absolute;
+      height: 14px; width: 14px;
+      left: 3px; bottom: 3px;
+      background: white; border-radius: 50%;
+      transition: 0.25s;
+    }
     input:checked + .slider { background: var(--safe); }
     input:checked + .slider::before { transform: translateX(18px); }
 
@@ -64,15 +78,106 @@
     .free-pill { background: var(--safe-bg); color: var(--safe); border: 1px solid var(--safe);
                  border-radius: 999px; font-size: 0.65rem; font-weight: 800;
                  padding: 0.1rem 0.45rem; margin-left: 0.3rem; vertical-align: middle; }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex; border-bottom: 1px solid var(--border);
+      margin: -0.9rem -0.9rem 0.75rem; padding: 0 0.9rem;
+      background: var(--card);
+    }
+    .tab-btn {
+      flex: 1; background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); padding: 0.55rem 0.4rem;
+      border-bottom: 2.5px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Panel visibility ── */
+    #sysPanel { display: none; }
+    #sysPanel.active { display: block; }
+    #mainPanel.hidden { display: none; }
+
+    /* ── System panel tiles ── */
+    .sys-stat-row {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem; margin-bottom: 0.65rem;
+    }
+    .sys-tile {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.55rem 0.4rem; text-align: center;
+    }
+    .sys-tile .s-num {
+      font-size: 1.15rem; font-weight: 800; color: var(--accent); line-height: 1;
+    }
+    .sys-tile .s-lbl {
+      font-size: 0.62rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.15rem;
+    }
+
+    /* ── RAM bar ── */
+    .ram-section { margin-bottom: 0.65rem; }
+    .ram-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem;
+    }
+    .live-dot {
+      display: inline-block; width: 6px; height: 6px;
+      background: var(--safe); border-radius: 50%;
+      animation: blink 1.4s ease-in-out infinite; margin-right: 0.3rem;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    .ram-track {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 999px; height: 9px; overflow: hidden;
+    }
+    .ram-fill {
+      height: 100%; border-radius: 999px;
+      background: var(--accent); transition: width 0.6s ease;
+    }
+    .ram-fill.warn   { background: var(--warn); }
+    .ram-fill.danger { background: var(--danger); }
+    .ram-sub { font-size: 0.68rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* ── Site time list ── */
+    .sys-section-title {
+      font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin: 0.5rem 0 0.35rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .site-rows { display: grid; gap: 0.3rem; max-height: 160px; overflow-y: auto; }
+    .site-row {
+      display: grid; grid-template-columns: 16px 1fr auto;
+      align-items: center; gap: 0.4rem; font-size: 0.8rem;
+      padding: 0.3rem 0.5rem;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .site-row img { width: 14px; height: 14px; border-radius: 2px; object-fit: contain; }
+    .site-row .s-host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .site-row .s-time { font-size: 0.72rem; color: var(--muted); white-space: nowrap; font-weight: 700; }
+    .empty-sys { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 0.75rem 0; }
   </style>
 </head>
 <body>
 <div class="popup-wrap">
 
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tabMain">&#x1F6E1; Protection</button>
+    <button class="tab-btn"        id="tabSys">&#x1F5A5; System</button>
+  </div>
+
+  <!-- ══ Main panel ══ -->
+  <div id="mainPanel">
+
   <!-- Header -->
   <div class="header">
     <div class="logo">
-      <img src="icon.svg" alt="">
+      <img src="icons/icon128.png" alt="">
       <h1>Ads Refiner <span class="free-pill">FREE</span></h1>
     </div>
     <div class="header-actions">
@@ -103,33 +208,39 @@
   <!-- Toggles -->
   <div class="toggle-group">
     <div class="mini-toggle">
-      <label><span>🛡 Protection enabled</span>
-        <label class="switch"><input id="tgEnabled" type="checkbox"><span class="slider"></span></label>
+      <label class="toggle-label" for="tgEnabled">
+        <span class="toggle-text">🛡 Protection enabled</span>
+        <span class="switch"><input id="tgEnabled" type="checkbox"><span class="slider"></span></span>
       </label>
     </div>
     <div class="mini-toggle">
-      <label><span>🚫 Block ads</span>
-        <label class="switch"><input id="tgAds" type="checkbox"><span class="slider"></span></label>
+      <label class="toggle-label" for="tgAds">
+        <span class="toggle-text">🚫 Block ads</span>
+        <span class="switch"><input id="tgAds" type="checkbox"><span class="slider"></span></span>
       </label>
     </div>
     <div class="mini-toggle">
-      <label><span>👣 Block trackers</span>
-        <label class="switch"><input id="tgTrackers" type="checkbox"><span class="slider"></span></label>
+      <label class="toggle-label" for="tgTrackers">
+        <span class="toggle-text">👣 Block trackers</span>
+        <span class="switch"><input id="tgTrackers" type="checkbox"><span class="slider"></span></span>
       </label>
     </div>
     <div class="mini-toggle">
-      <label><span>🔗 Warn suspicious links</span>
-        <label class="switch"><input id="tgLinks" type="checkbox"><span class="slider"></span></label>
+      <label class="toggle-label" for="tgLinks">
+        <span class="toggle-text">🔗 Warn suspicious links</span>
+        <span class="switch"><input id="tgLinks" type="checkbox"><span class="slider"></span></span>
       </label>
     </div>
     <div class="mini-toggle">
-      <label><span>⬇ Block risky downloads</span>
-        <label class="switch"><input id="tgDownloads" type="checkbox"><span class="slider"></span></label>
+      <label class="toggle-label" for="tgDownloads">
+        <span class="toggle-text">⬇ Block risky downloads</span>
+        <span class="switch"><input id="tgDownloads" type="checkbox"><span class="slider"></span></span>
       </label>
     </div>
     <div class="mini-toggle">
-      <label><span>🎨 Cosmetic ad hiding</span>
-        <label class="switch"><input id="tgCosmetic" type="checkbox"><span class="slider"></span></label>
+      <label class="toggle-label" for="tgCosmetic">
+        <span class="toggle-text">🎨 Cosmetic ad hiding</span>
+        <span class="switch"><input id="tgCosmetic" type="checkbox"><span class="slider"></span></span>
       </label>
     </div>
   </div>
@@ -156,7 +267,51 @@
     <button class="btn-ghost" id="btnClearLog">🗑 Clear log</button>
   </div>
 
+  </div><!-- /mainPanel -->
+
+  <!-- ══ System panel ══ -->
+  <div id="sysPanel">
+
+    <!-- Top stats -->
+    <div class="sys-stat-row">
+      <div class="sys-tile">
+        <div class="s-num" id="sysSession">—</div>
+        <div class="s-lbl">Session</div>
+      </div>
+      <div class="sys-tile">
+        <div class="s-num" id="sysToday">—</div>
+        <div class="s-lbl">Today</div>
+      </div>
+      <div class="sys-tile">
+        <div class="s-num" id="sysRam">—</div>
+        <div class="s-lbl">Chrome RAM</div>
+      </div>
+    </div>
+
+    <!-- RAM bar -->
+    <div class="ram-section">
+      <div class="ram-header">
+        <span><span class="live-dot"></span> RAM usage</span>
+        <span id="sysRamPct" style="font-size:0.7rem"></span>
+      </div>
+      <div class="ram-track"><div class="ram-fill" id="sysRamBar" style="width:0%"></div></div>
+      <div class="ram-sub" id="sysRamSub">Loading…</div>
+    </div>
+
+    <!-- Today per site -->
+    <div class="sys-section-title">
+      <span>⏱ Time per site — today</span>
+      <a id="sysOpenFull">Full view →</a>
+    </div>
+    <div class="site-rows" id="sysSiteRows">
+      <div class="empty-sys">Loading…</div>
+    </div>
+
+  </div><!-- /sysPanel -->
+
 </div>
+<script src="crossbrowser.js"></script>
+<script src="favicon.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

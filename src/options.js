@@ -1,8 +1,9 @@
 // src/options.js — Settings page controller
+// BUG FIX: Was using globalThis.adsRefinerApi which browser-api.js sets (Firefox only).
+// On Chrome, adsRefinerApi is undefined → all storage/runtime calls silently fail.
+// Fix: use CR (set by crossbrowser.js, loaded before this script in options.html).
 
 'use strict';
-
-const api = globalThis.adsRefinerApi;
 
 const KEYS = [
   'enabled', 'blockAds', 'blockTrackers',
@@ -12,11 +13,10 @@ const KEYS = [
 const $ = (id) => document.getElementById(id);
 
 async function init() {
-  const settings = await api.storage.local.get(KEYS);
+  const settings = await CR.storage.local.get(KEYS);
   for (const key of KEYS) {
     const el = $(key);
     if (!el) continue;
-    // Default everything ON except if explicitly saved as false
     el.checked = settings[key] !== false;
   }
 }
@@ -27,22 +27,25 @@ async function save() {
     const el = $(key);
     if (el) settings[key] = el.checked;
   }
-  await api.storage.local.set(settings);
-  await api.runtime.sendMessage({ type: 'SET_SETTINGS', settings }).catch(() => {});
+  await CR.storage.local.set(settings);
+  // Notify background to sync rulesets
+  CR.runtime.sendMessage({ type: 'SET_SETTINGS', settings }).catch(() => {});
   const msg = $('savedMsg');
-  msg.textContent = '✓ Saved successfully.';
-  setTimeout(() => { msg.textContent = ''; }, 2000);
+  if (msg) {
+    msg.textContent = '✓ Saved.';
+    setTimeout(() => { msg.textContent = ''; }, 2000);
+  }
 }
 
 $('saveBtn').addEventListener('click', save);
 
-// Instant-save each toggle for live feedback
+// Live-save each toggle immediately
 for (const key of KEYS) {
   const el = $(key);
   if (el) {
     el.addEventListener('change', () => {
-      api.storage.local.set({ [key]: el.checked });
-      api.runtime.sendMessage({ type: 'SET_SETTINGS', settings: { [key]: el.checked } }).catch(() => {});
+      CR.storage.local.set({ [key]: el.checked });
+      CR.runtime.sendMessage({ type: 'SET_SETTINGS', settings: { [key]: el.checked } }).catch(() => {});
     });
   }
 }

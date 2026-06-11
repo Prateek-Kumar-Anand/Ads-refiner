@@ -18,6 +18,7 @@ const WARNING_PAGE   = chrome.runtime.getURL('src/warning.html');
 const DASHBOARD_PAGE = chrome.runtime.getURL('src/dashboard.html');
 const NOTIFICATION_ID = 'ads-refiner-threat';
 const LAST_ALERT_KEY  = 'lastThreatAlert';
+const SESSION_START_MS = Date.now();   // service-worker start = Chrome session start (approximation)
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -138,7 +139,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (risk.level === 'safe') {
     await chrome.notifications.create('ar-safe-link', {
       type: 'basic',
-      iconUrl: chrome.runtime.getURL('src/icon.svg'),
+      iconUrl: chrome.runtime.getURL('src/icons/icon128.png'),
       title: 'Ads Refiner — Link looks safe',
       message: `No threats detected for: ${info.linkUrl.slice(0, 80)}`,
       priority: 0
@@ -161,8 +162,15 @@ chrome.notifications.onClicked.addListener(async (id) => {
 // ─── Message Handler ──────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  handleMessage(message).then(sendResponse).catch((err) => sendResponse({ ok: false, error: err.message }));
-  return true;
+  // FIX #7: Guard against SW being killed mid-message (MV3 service worker lifecycle)
+  handleMessage(message)
+    .then((result) => {
+      try { sendResponse(result); } catch (_) { /* port closed — SW was recycled */ }
+    })
+    .catch((err) => {
+      try { sendResponse({ ok: false, error: err.message }); } catch (_) {}
+    });
+  return true;  // keep message channel open for async response
 });
 
 async function handleMessage(msg) {
@@ -192,6 +200,10 @@ async function handleMessage(msg) {
     case 'OPEN_DASHBOARD':
       await chrome.tabs.create({ url: DASHBOARD_PAGE });
       return { ok: true };
+    case 'RECORD_TIME':     return recordSiteTime(msg.host, msg.ms);
+    case 'GET_SITE_TIME':   return getSiteTime();
+    case 'CLEAR_SITE_TIME': return clearSiteTime();
+    case 'GET_SESSION_MS':  return { ms: Date.now() - SESSION_START_MS };
     default:
       return { ok: false, error: 'Unknown message type.' };
   }
@@ -230,7 +242,7 @@ async function recordThreat(threat) {
 async function showThreatNotification(message = 'A potential threat was detected.') {
   await chrome.notifications.create(NOTIFICATION_ID, {
     type: 'basic',
-    iconUrl: chrome.runtime.getURL('src/icon.svg'),
+    iconUrl: chrome.runtime.getURL('src/icons/icon128.png'),
     title: 'Ads Refiner — Threat Blocked',
     message,
     priority: 2
@@ -350,4 +362,71 @@ function buildWarningUrl(target, risk) {
   return u.href;
 }
 
-syncRulesets({}).catch(() => {});
+// FIX #7: Wrap top-level SW init in a try/catch — any uncaught module error
+// silently kills the entire MV3 service worker with no visible failure.
+async function initServiceWorker() {
+  try {
+    await syncRulesets({});
+  } catch (err) {
+    console.error('[AdsRefiner] Service worker init failed:', err);
+  }
+}
+
+// FIX #7: Use self.addEventListener('activate') to ensure SW is fully installed
+// before running init — avoids race on first install where storage is empty.
+self.addEventListener('activate', () => {
+  initServiceWorker();
+});
+
+// Also run immediately for already-active SW (extension update scenario)
+initServiceWorker();
+
+// ─── Site Time Tracking ───────────────────────────────────────────────────────
+
+const SITE_TIME_KEY = 'siteTime';
+
+// BUG FIX: Serialise all recordSiteTime writes with a promise chain.
+// Without this, two rapid RECORD_TIME messages (blur + pagehide firing together)
+// both read the same stale storage value and the second write silently drops the first.
+let _siteTimeWriteChain = Promise.resolve();
+
+function recordSiteTime(host, ms) {
+  // Validate before queuing
+  if (!host || !ms || ms <= 0) return Promise.resolve({ ok: false });
+
+  // Chain onto the previous write — reads always see the latest committed data
+  _siteTimeWriteChain = _siteTimeWriteChain.then(() => _doRecordSiteTime(host, ms));
+  return _siteTimeWriteChain;
+}
+
+async function _doRecordSiteTime(host, ms) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { [SITE_TIME_KEY]: data = {} } = await chrome.storage.local.get(SITE_TIME_KEY);
+
+  if (!data[host]) data[host] = { total: 0, days: {} };
+  data[host].total += ms;
+  data[host].days[today] = (data[host].days[today] ?? 0) + ms;
+
+  // Keep only last 90 days per host to avoid unbounded growth
+  const days = data[host].days;
+  const dayKeys = Object.keys(days).sort();
+  if (dayKeys.length > 90) {
+    for (const old of dayKeys.slice(0, dayKeys.length - 90)) delete days[old];
+  }
+
+  await chrome.storage.local.set({ [SITE_TIME_KEY]: data });
+  return { ok: true };
+}
+
+async function getSiteTime() {
+  // Wait for any pending write to finish before reading
+  await _siteTimeWriteChain;
+  const { [SITE_TIME_KEY]: data = {} } = await chrome.storage.local.get(SITE_TIME_KEY);
+  return data;
+}
+
+async function clearSiteTime() {
+  await _siteTimeWriteChain;
+  await chrome.storage.local.set({ [SITE_TIME_KEY]: {} });
+  return { ok: true };
+}

@@ -22,7 +22,13 @@
   },
   "action": {
     "default_title": "Ads Refiner",
-    "default_popup": "src/popup.html"
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "src/icons/icon16.png",
+      "32": "src/icons/icon32.png",
+      "48": "src/icons/icon48.png",
+      "128": "src/icons/icon128.png"
+    }
   },
   "options_page": "src/options.html",
   "declarative_net_request": {
@@ -45,7 +51,9 @@
         "<all_urls>"
       ],
       "js": [
-        "src/content.js"
+        "src/crossbrowser.js",
+        "src/content.js",
+        "src/timetracker.js"
       ],
       "css": [
         "src/content.css"
@@ -57,13 +65,33 @@
     {
       "resources": [
         "src/warning.html",
-        "src/warning.js",
-        "src/dashboard.html",
-        "src/styles.css"
+        "src/warning.js"
       ],
       "matches": [
         "<all_urls>"
       ]
+    },
+    {
+      "resources": [
+        "src/dashboard.html",
+        "src/system-dashboard.html",
+        "src/styles.css",
+        "src/icons/icon16.png",
+        "src/icons/icon32.png",
+        "src/icons/icon48.png",
+        "src/icons/icon128.png",
+        "src/favicon.js",
+        "src/crossbrowser.js"
+      ],
+      "matches": [
+        "chrome-extension://*/*"
+      ]
     }
-  ]
+  ],
+  "icons": {
+    "16": "src/icons/icon16.png",
+    "32": "src/icons/icon32.png",
+    "48": "src/icons/icon48.png",
+    "128": "src/icons/icon128.png"
+  }
 }
