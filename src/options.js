@@ -1,7 +1,5 @@
 // src/options.js — Settings page controller
-// BUG FIX: Was using globalThis.adsRefinerApi which browser-api.js sets (Firefox only).
-// On Chrome, adsRefinerApi is undefined → all storage/runtime calls silently fail.
-// Fix: use CR (set by crossbrowser.js, loaded before this script in options.html).
+// Uses CR (set by crossbrowser.js, loaded before this script in options.html).
 
 'use strict';
 

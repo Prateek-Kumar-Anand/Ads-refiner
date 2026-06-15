@@ -96,10 +96,12 @@
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-    /* ── Panel visibility ── */
-    #sysPanel { display: none; }
-    #sysPanel.active { display: block; }
-    #mainPanel.hidden { display: none; }
+    /* ── Panel visibility ──
+       Controlled entirely via inline style.display in popup.js (switchTab).
+       Always set to an explicit 'block'/'none' there — never '' — otherwise
+       clearing the inline style falls back to no rule here and the panel
+       stays at its default 'display: block', or (if a rule exists) whatever
+       that rule says, regardless of which tab is active. */
 
     /* ── System panel tiles ── */
     .sys-stat-row {

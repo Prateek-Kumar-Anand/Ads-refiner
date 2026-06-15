@@ -1,5 +1,4 @@
 // src/safety.js — Chrome ES Module (shared core logic, ES module format)
-// The same logic exists in safety-browser.js as an IIFE for Firefox/content scripts.
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

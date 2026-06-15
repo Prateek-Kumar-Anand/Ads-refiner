@@ -18,7 +18,20 @@ const WARNING_PAGE   = chrome.runtime.getURL('src/warning.html');
 const DASHBOARD_PAGE = chrome.runtime.getURL('src/dashboard.html');
 const NOTIFICATION_ID = 'ads-refiner-threat';
 const LAST_ALERT_KEY  = 'lastThreatAlert';
-const SESSION_START_MS = Date.now();   // service-worker start = Chrome session start (approximation)
+const SESSION_START_KEY = 'sessionStartMs';
+
+// BUG FIX: `const SESSION_START_MS = Date.now()` was reset every time the MV3
+// service worker restarted (every ~30s of inactivity), so "Session" in the
+// System tab almost always showed a few seconds, not the real browser-session
+// length. chrome.storage.session persists across SW restarts but is cleared
+// when the browser fully closes, so it's a good proxy for "this Chrome session".
+async function getSessionStartMs() {
+  const { [SESSION_START_KEY]: start } = await chrome.storage.session.get(SESSION_START_KEY);
+  if (start) return start;
+  const now = Date.now();
+  await chrome.storage.session.set({ [SESSION_START_KEY]: now });
+  return now;
+}
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -203,7 +216,7 @@ async function handleMessage(msg) {
     case 'RECORD_TIME':     return recordSiteTime(msg.host, msg.ms);
     case 'GET_SITE_TIME':   return getSiteTime();
     case 'CLEAR_SITE_TIME': return clearSiteTime();
-    case 'GET_SESSION_MS':  return { ms: Date.now() - SESSION_START_MS };
+    case 'GET_SESSION_MS':  return { ms: Date.now() - await getSessionStartMs() };
     default:
       return { ok: false, error: 'Unknown message type.' };
   }

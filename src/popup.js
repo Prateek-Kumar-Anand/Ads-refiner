@@ -122,18 +122,20 @@ const TAB_SYS    = $('tabSys');
 const PANEL_MAIN = $('mainPanel');
 const PANEL_SYS  = $('sysPanel');
 
-// BUG FIX: Set explicit initial display so interval check is reliable from frame 1
-// Without this, PANEL_SYS.style.display === '' (unset) and the interval fires immediately
+// BUG FIX: Set explicit display so the panels are governed entirely by inline
+// styles. Setting '' would clear the inline value and fall back to the (now
+// removed) CSS rule for #sysPanel, which kept it permanently hidden — the
+// "System tab is empty" bug.
 PANEL_SYS.style.display  = 'none';
-PANEL_MAIN.style.display = '';
+PANEL_MAIN.style.display = 'block';
 
 function switchTab(showMain) {
   // FIX #2: Unified tab state — one function controls both tabs and both panels
   TAB_MAIN.classList.toggle('active', showMain);
   TAB_SYS.classList.toggle('active', !showMain);
-  // Use display directly — avoids the hidden/active dual-class confusion
-  PANEL_MAIN.style.display = showMain ? '' : 'none';
-  PANEL_SYS.style.display  = showMain ? 'none' : '';
+  // BUG FIX: explicit 'block'/'none' — NOT '' — see comment near PANEL_SYS init above.
+  PANEL_MAIN.style.display = showMain ? 'block' : 'none';
+  PANEL_SYS.style.display  = showMain ? 'none' : 'block';
 }
 
 TAB_MAIN.addEventListener('click', () => switchTab(true));

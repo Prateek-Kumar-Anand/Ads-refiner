@@ -1,4 +1,4 @@
-// src/content.js — Content Script (Chrome + Firefox compatible)
+// src/content.js — Content Script (Chrome MV3)
 // Fixes applied:
 //  #7  Two overlapping click listeners merged into ONE
 //  #8  Dead code (RISKY_MIME_TYPES) removed
