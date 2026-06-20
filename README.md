@@ -174,6 +174,6 @@ Free to use, modify, and distribute.
 
 <div align="center">
 
-⭐ **If Ads Refiner keeps your browsing cleaner and safer, consider starring the repo!** ⭐
+⭐ **WE WISH YOU HAVE SAFE BROWESING AND EASE TO USE THIS CHROME EXTENSION !** ⭐
 
 </div>
