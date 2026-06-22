@@ -163,6 +163,7 @@ Built with **vanilla JS** — no frameworks, no build step, no bloat.
 ## 🤝 Contributing
 
 Found a bug or have an idea for a new safety check? Issues and pull requests are welcome! 🙌
+We will kindly accept your issue and try to solve it as fast as possible.
 
 ---
 
