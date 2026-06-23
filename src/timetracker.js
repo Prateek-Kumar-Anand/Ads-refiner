@@ -12,7 +12,8 @@ const HOST = location.hostname || '';
 // location.hostname is '' on chrome-extension://, about:blank, file://, etc.
 if (!HOST || HOST === 'newtab' || location.protocol === 'chrome-extension:') {
   // Nothing to track — exit content script silently
-  throw new Error('[AdsRefiner] timetracker: skipping non-web page');
+  console.debug('[AdsRefiner] timetracker: skipping non-web page');
+return;
 }
 
 let sessionStart = null;   // timestamp when active session began on this page
