@@ -30,7 +30,7 @@ function startSession() {
 function endSession() {
   if (isActive && sessionStart !== null) {
     const elapsed = Date.now() - sessionStart;
-    if (elapsed > 1000) {   // ignore sub-second blips
+    if (elapsed > 0) {   // ignore sub-second blips
       _rt.sendMessage({ type: 'RECORD_TIME', host: HOST, ms: elapsed });
     }
     isActive = false;

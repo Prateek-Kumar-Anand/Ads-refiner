@@ -214,7 +214,7 @@ async function handleMessage(msg) {
       await chrome.tabs.create({ url: DASHBOARD_PAGE });
       return { ok: true };
     case 'RECORD_TIME':     return recordSiteTime(msg.host, msg.ms);
-    case 'GET_SITE_TIME':   return getSiteTime();
+    case 'GET_SITE_TIME'    :   return getSiteTime();
     case 'CLEAR_SITE_TIME': return clearSiteTime();
     case 'GET_SESSION_MS':  return { ms: Date.now() - await getSessionStartMs() };
     default:

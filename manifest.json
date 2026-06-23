@@ -9,6 +9,7 @@
     "downloads",
     "notifications",
     "storage",
+    "history",
     "tabs",
     "webNavigation",
     "contextMenus"
