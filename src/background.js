@@ -107,6 +107,36 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
   } catch { /* ignore */ }
 });
 
+// ─── Ad/Tracker block history (Chrome declarativeNetRequest) ────────────────
+// BUG FIX: Chrome's MV3 declarativeNetRequest blocks ad/tracker requests
+// entirely at the network layer, so unlike background-firefox.js (which uses
+// the old blocking webRequest API and explicitly calls logEvent/incrementCounter
+// for 'ad_blocked'/'tracker_blocked'), this file had NO code path that ever
+// recorded an ad/tracker block. Counters stayed at 0 forever and the dashboard
+// "block history" log never showed any ad_blocked/tracker_blocked entries,
+// even though ads/trackers were in fact being blocked.
+// onRuleMatchedDebug reports every DNR match (ruleset id + matched request)
+// and is available for extensions loaded unpacked/in developer mode — which
+// matches this extension's documented install method.
+const RULESET_TO_EVENT = {
+  ads_refiner_rules: { type: 'ad_blocked', counter: 'adsBlocked' },
+  trackers_refiner_rules: { type: 'tracker_blocked', counter: 'trackersBlocked' }
+};
+
+if (chrome.declarativeNetRequest.onRuleMatchedDebug) {
+  chrome.declarativeNetRequest.onRuleMatchedDebug.addListener(async (info) => {
+    const mapping = RULESET_TO_EVENT[info.rule?.rulesetId];
+    if (!mapping) return;
+    await logEvent(mapping.type, { url: info.request?.url, tabId: info.request?.tabId });
+    await incrementCounter(mapping.counter);
+  });
+} else {
+  // Feedback API unavailable (e.g. extension installed from the Web Store,
+  // where onRuleMatchedDebug is disabled by Chrome) — block history for
+  // ads/trackers won't populate, but blocking itself still works fine.
+  console.debug('[AdsRefiner] onRuleMatchedDebug unavailable — ad/tracker block history disabled.');
+}
+
 // ─── Download Listener ────────────────────────────────────────────────────────
 
 chrome.downloads.onCreated.addListener(async (item) => {
