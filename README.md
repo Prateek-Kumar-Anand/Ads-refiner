@@ -169,7 +169,7 @@ We will kindly accept your issue and try to solve it as fast as possible.
 
 ## 📄 License
 
-Free to use, modify, and distribute.
+Free to use, modify, and distribute among the public.
 
 ---
 
