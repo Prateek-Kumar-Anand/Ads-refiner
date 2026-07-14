@@ -38,10 +38,12 @@
         "<all_urls>"
       ],
       "js": [
+        "src/crossbrowser.js",
         "src/browser-api.js",
         "src/safety-browser.js",
         "src/whitelist-browser.js",
-        "src/content.js"
+        "src/content.js",
+        "src/timetracker.js"
       ],
       "css": [
         "src/content.css"

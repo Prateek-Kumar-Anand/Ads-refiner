@@ -12,6 +12,7 @@ import {
 import { loadWhitelist, addToWhitelist, removeFromWhitelist, getWhitelist } from './whitelist.js';
 import { logEvent, getLog, clearLog, exportAsJson, exportAsCsv, incrementCounter, getCounters } from './logger.js';
 import { getReputation, updateReputation, getAllReputation } from './reputation.js';
+import { enqueueStorageWrite } from './storage-queue.js';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const WARNING_PAGE   = chrome.runtime.getURL('src/warning.html');
@@ -271,14 +272,20 @@ async function consumeAllowedUrl(url) {
 }
 
 // ─── Threat Management ────────────────────────────────────────────────────────
+// BUG FIX: all three mutators now go through the shared queue, keyed on
+// 'blockedDownloads' — onCreated/onChanged can both fire for the same
+// download in quick succession, and multiple simultaneous downloads can
+// trigger overlapping recordThreat() calls that used to race.
 
 async function recordThreat(threat) {
-  const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
-  const deduped = blockedDownloads.filter((t) => !(t.id === threat.id && t.url === threat.url));
-  deduped.unshift(threat);
-  await chrome.storage.local.set({
-    [LAST_ALERT_KEY]: threat,
-    blockedDownloads: deduped.slice(0, 100)
+  return enqueueStorageWrite('blockedDownloads', async () => {
+    const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
+    const deduped = blockedDownloads.filter((t) => !(t.id === threat.id && t.url === threat.url));
+    deduped.unshift(threat);
+    await chrome.storage.local.set({
+      [LAST_ALERT_KEY]: threat,
+      blockedDownloads: deduped.slice(0, 100)
+    });
   });
 }
 
@@ -294,14 +301,19 @@ async function showThreatNotification(message = 'A potential threat was detected
 
 async function ignoreThreat(createdAt) {
   if (!createdAt) return { ok: true };
-  const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
-  await chrome.storage.local.set({
-    blockedDownloads: blockedDownloads.filter((t) => t.createdAt !== createdAt)
+  return enqueueStorageWrite('blockedDownloads', async () => {
+    const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
+    await chrome.storage.local.set({
+      blockedDownloads: blockedDownloads.filter((t) => t.createdAt !== createdAt)
+    });
+    return { ok: true };
   });
-  return { ok: true };
 }
 
 async function deleteThreat(createdAt, suppliedThreat) {
+  // The download/tab side-effects don't touch storage, so they can run
+  // outside the queue; only the final ignoreThreat() write needs to be
+  // serialized against other blockedDownloads mutations.
   const { blockedDownloads = [] } = await chrome.storage.local.get('blockedDownloads');
   const threat = blockedDownloads.find((t) => t.createdAt === createdAt) ?? suppliedThreat;
   if (threat?.source === 'Open tab' && threat.tabId) {
@@ -428,18 +440,22 @@ initServiceWorker();
 
 const SITE_TIME_KEY = 'siteTime';
 
-// BUG FIX: Serialise all recordSiteTime writes with a promise chain.
-// Without this, two rapid RECORD_TIME messages (blur + pagehide firing together)
-// both read the same stale storage value and the second write silently drops the first.
-let _siteTimeWriteChain = Promise.resolve();
+// BUG FIX: Previously this used its own standalone `_siteTimeWriteChain`
+// promise chain reassigned directly to `_siteTimeWriteChain.then(fn)` with no
+// `.catch()`. That serialized writes correctly, but if `_doRecordSiteTime`
+// ever threw (e.g. a transient chrome.storage error), `_siteTimeWriteChain`
+// itself became a REJECTED promise — and every future call chained a
+// `.then()` onto it, whose fulfillment handler never runs on a rejected
+// promise. That permanently wedged site-time tracking for the rest of the
+// service worker's lifetime after a single failed write. Using the shared
+// `enqueueStorageWrite` queue fixes this the same way it fixes logger.js/
+// reputation.js: the queue's own continuation is always caught and reset to
+// a resolved state, while the promise returned to the caller still reflects
+// the real success/failure of that individual write.
 
 function recordSiteTime(host, ms) {
-  // Validate before queuing
   if (!host || !ms || ms <= 0) return Promise.resolve({ ok: false });
-
-  // Chain onto the previous write — reads always see the latest committed data
-  _siteTimeWriteChain = _siteTimeWriteChain.then(() => _doRecordSiteTime(host, ms));
-  return _siteTimeWriteChain;
+  return enqueueStorageWrite('siteTime', () => _doRecordSiteTime(host, ms));
 }
 
 async function _doRecordSiteTime(host, ms) {
@@ -462,14 +478,17 @@ async function _doRecordSiteTime(host, ms) {
 }
 
 async function getSiteTime() {
-  // Wait for any pending write to finish before reading
-  await _siteTimeWriteChain;
-  const { [SITE_TIME_KEY]: data = {} } = await chrome.storage.local.get(SITE_TIME_KEY);
-  return data;
+  // Enqueue the read on the same queue so it's ordered after any in-flight
+  // writes rather than racing ahead of them.
+  return enqueueStorageWrite('siteTime', async () => {
+    const { [SITE_TIME_KEY]: data = {} } = await chrome.storage.local.get(SITE_TIME_KEY);
+    return data;
+  });
 }
 
 async function clearSiteTime() {
-  await _siteTimeWriteChain;
-  await chrome.storage.local.set({ [SITE_TIME_KEY]: {} });
-  return { ok: true };
+  return enqueueStorageWrite('siteTime', async () => {
+    await chrome.storage.local.set({ [SITE_TIME_KEY]: {} });
+    return { ok: true };
+  });
 }

@@ -6,12 +6,24 @@
 //  #5  CHECK_URL now returns reputation data (trust score now works on Firefox)
 //  #6  contextMenus.removeAll() before create
 //  #10 trackersBlocked counter now correctly incremented
+//  #13 logEvent/incrementCounter/recordThreat/ignoreThreat now serialized via
+//      storage-queue-browser.js — onBeforeRequest fires once PER blocked
+//      request without awaiting the writes (it can't; blocking webRequest
+//      listeners must return synchronously), so a single ad-heavy page load
+//      used to fire many overlapping unserialized writes that silently
+//      dropped each other's counter/log updates.
+//  #14 Site-time tracking (RECORD_TIME/GET_SITE_TIME/CLEAR_SITE_TIME/
+//      GET_SESSION_MS) was entirely missing on Firefox — timetracker.js
+//      wasn't even loaded as a content script, and the background had no
+//      handlers for these message types, so the popup's System tab and the
+//      System Dashboard silently showed zero site-time data on Firefox.
 
 'use strict';
 
 const api      = globalThis.adsRefinerApi;
 const safety   = globalThis.adsRefinerSafety;
 const whitelist = globalThis.adsRefinerWhitelist;
+const { enqueueStorageWrite } = globalThis.adsRefinerStorageQueue;
 
 const { getUrlRisk, isDangerousDownload, isLikelyAdUrl } = safety;
 
@@ -111,6 +123,10 @@ api.webRequest.onBeforeRequest?.addListener(
     try {
       const h = new URL(details.url).hostname.toLowerCase();
       if (runtimeSettings.blockAds && AD_HOSTS.some((p) => p.test(h))) {
+        // FIX #13: can't await inside a blocking listener (must return
+        // synchronously), so these used to race unserialized against every
+        // other blocked request on the page. logEvent/incrementCounter now
+        // queue themselves internally instead.
         logEvent('ad_blocked', { url: details.url });
         incrementCounter('adsBlocked');    // FIX #10: correct counter for ads
         return { cancel: true };
@@ -146,11 +162,28 @@ api.webNavigation.onBeforeNavigate?.addListener(async (details) => {
   const risk = getUrlRisk(details.url, { whitelist: wl });
   if (risk.whitelisted || risk.level === 'safe') return;
 
+  // FIX #15: updateReputation() was never called on Firefox at all — the
+  // "Domain reputation tracking" feature (visits + flags) silently did
+  // nothing here, even though getReputationData()/getAllReputationData()
+  // existed as read accessors for data that was never written.
+  const urlObj = new URL(details.url);
+  await updateReputation(urlObj.hostname, { type: 'flagged', reason: risk.reasons[0] });
   await logEvent('url_blocked', { url: details.url, level: risk.level, reasons: risk.reasons });
   await incrementCounter('urlsBlocked');
 
   const warningUrl = buildWarningUrl(details.url, risk);
   await api.tabs.update(details.tabId, { url: warningUrl.href });
+});
+
+// FIX #15: record reputation for completed navigations (was entirely missing on Firefox)
+api.webNavigation.onCompleted?.addListener(async (details) => {
+  if (details.frameId !== 0) return;
+  try {
+    const url = new URL(details.url);
+    if (['http:', 'https:'].includes(url.protocol)) {
+      await updateReputation(url.hostname, { type: 'visit' });
+    }
+  } catch { /* ignore */ }
 });
 
 // ─── Download Listener ────────────────────────────────────────────────────────
@@ -227,6 +260,11 @@ async function handleMessage(msg) {
     case 'OPEN_DASHBOARD':
       await api.tabs.create({ url: DASHBOARD_PAGE });
       return { ok: true };
+    // FIX #14: site-time tracking was entirely missing on Firefox.
+    case 'RECORD_TIME':     return recordSiteTime(msg.host, msg.ms);
+    case 'GET_SITE_TIME':   return getSiteTime();
+    case 'CLEAR_SITE_TIME': return clearSiteTime();
+    case 'GET_SESSION_MS':  return { ms: Date.now() - await getSessionStartMs() };
     default:
       return { ok: false, error: 'Unknown message type.' };
   }
@@ -251,14 +289,19 @@ async function consumeAllowedUrl(url) {
 }
 
 // ─── Threats ──────────────────────────────────────────────────────────────────
+// FIX #13: recordThreat/ignoreThreat now serialized — onCreated/onChanged can
+// both fire for the same download in quick succession, and multiple
+// simultaneous downloads used to race on the shared blockedDownloads array.
 
 async function recordThreat(threat) {
-  const { blockedDownloads = [] } = await api.storage.local.get('blockedDownloads');
-  const deduped = blockedDownloads.filter((t) => !(t.id === threat.id && t.url === threat.url));
-  deduped.unshift(threat);
-  await api.storage.local.set({
-    [LAST_ALERT_KEY]: threat,
-    blockedDownloads: deduped.slice(0, 100)
+  return enqueueStorageWrite('blockedDownloads', async () => {
+    const { blockedDownloads = [] } = await api.storage.local.get('blockedDownloads');
+    const deduped = blockedDownloads.filter((t) => !(t.id === threat.id && t.url === threat.url));
+    deduped.unshift(threat);
+    await api.storage.local.set({
+      [LAST_ALERT_KEY]: threat,
+      blockedDownloads: deduped.slice(0, 100)
+    });
   });
 }
 
@@ -274,11 +317,13 @@ async function showThreatNotification(message = 'A threat was detected and block
 
 async function ignoreThreat(createdAt) {
   if (!createdAt) return { ok: true };
-  const { blockedDownloads = [] } = await api.storage.local.get('blockedDownloads');
-  await api.storage.local.set({
-    blockedDownloads: blockedDownloads.filter((t) => t.createdAt !== createdAt)
+  return enqueueStorageWrite('blockedDownloads', async () => {
+    const { blockedDownloads = [] } = await api.storage.local.get('blockedDownloads');
+    await api.storage.local.set({
+      blockedDownloads: blockedDownloads.filter((t) => t.createdAt !== createdAt)
+    });
+    return { ok: true };
   });
-  return { ok: true };
 }
 
 async function deleteThreat(createdAt, suppliedThreat) {
@@ -349,9 +394,12 @@ const LOG_KEY = 'eventLog';
 
 async function logEvent(type, details) {
   const entry = { id: `${Date.now()}-${Math.random().toString(36).slice(2,7)}`, type, timestamp: new Date().toISOString(), ...details };
-  const { [LOG_KEY]: log = [] } = await api.storage.local.get(LOG_KEY);
-  log.unshift(entry);
-  await api.storage.local.set({ [LOG_KEY]: log.slice(0, 500) });
+  return enqueueStorageWrite('eventLog', async () => {
+    const { [LOG_KEY]: log = [] } = await api.storage.local.get(LOG_KEY);
+    log.unshift(entry);
+    await api.storage.local.set({ [LOG_KEY]: log.slice(0, 500) });
+    return entry;
+  });
 }
 
 async function getLogData(filter) {
@@ -374,9 +422,12 @@ async function exportCsv() {
 }
 
 async function incrementCounter(name) {
-  const { counters = {} } = await api.storage.local.get('counters');
-  counters[name] = (counters[name] ?? 0) + 1;
-  await api.storage.local.set({ counters });
+  return enqueueStorageWrite('counters', async () => {
+    const { counters = {} } = await api.storage.local.get('counters');
+    counters[name] = (counters[name] ?? 0) + 1;
+    await api.storage.local.set({ counters });
+    return counters[name];
+  });
 }
 
 async function getCountersData() {
@@ -387,6 +438,7 @@ async function getCountersData() {
 // ─── Reputation (inline for Firefox) ─────────────────────────────────────────
 
 const REP_KEY = 'domainReputation';
+const MAX_REP_DOMAINS = 1000;
 
 async function getReputationData(domain) {
   const { [REP_KEY]: rep = {} } = await api.storage.local.get(REP_KEY);
@@ -396,6 +448,62 @@ async function getReputationData(domain) {
 async function getAllReputationData() {
   const { [REP_KEY]: rep = {} } = await api.storage.local.get(REP_KEY);
   return rep;
+}
+
+// FIX #15: this writer didn't exist at all on Firefox — mirrors reputation.js.
+async function updateReputation(domain, event) {
+  return enqueueStorageWrite('domainReputation', async () => {
+    const { [REP_KEY]: rep = {} } = await api.storage.local.get(REP_KEY);
+
+    if (!rep[domain]) {
+      rep[domain] = {
+        domain,
+        firstSeen: new Date().toISOString(),
+        visits: 0,
+        flagged: false,
+        flagCount: 0,
+        score: 50,
+        lastUpdated: new Date().toISOString()
+      };
+    }
+
+    const entry = rep[domain];
+    entry.lastUpdated = new Date().toISOString();
+
+    switch (event.type) {
+      case 'visit':
+        entry.visits++;
+        entry.score = Math.min(100, entry.score + Math.max(0, (5 - entry.flagCount) * 0.5));
+        break;
+      case 'flagged':
+        entry.flagged = true;
+        entry.flagCount++;
+        entry.score = Math.max(0, entry.score - 20 * Math.min(entry.flagCount, 3));
+        entry.lastReason = event.reason ?? 'Suspicious activity detected.';
+        break;
+      case 'whitelisted':
+        entry.score = 100;
+        entry.flagged = false;
+        break;
+      case 'breach':
+        entry.score = Math.max(0, entry.score - 10);
+        entry.hasKnownBreach = true;
+        entry.breachCount = (entry.breachCount ?? 0) + 1;
+        break;
+    }
+
+    const allKeys = Object.keys(rep);
+    if (allKeys.length > MAX_REP_DOMAINS) {
+      const sorted = [...allKeys].sort((a, b) =>
+        (rep[a]?.lastUpdated ?? '') < (rep[b]?.lastUpdated ?? '') ? -1 : 1
+      );
+      const toDelete = sorted.slice(0, allKeys.length - MAX_REP_DOMAINS);
+      for (const k of toDelete) delete rep[k];
+    }
+
+    await api.storage.local.set({ [REP_KEY]: rep });
+    return entry;
+  });
 }
 
 // ─── HIBP (inline for Firefox) ───────────────────────────────────────────────
@@ -428,4 +536,60 @@ function buildWarningUrl(target, risk) {
   u.searchParams.set('score', String(risk.score ?? 0));
   u.searchParams.set('reasons', JSON.stringify(risk.reasons));
   return u;
+}
+
+// ─── Session + Site Time Tracking (FIX #14 — was entirely missing) ───────────
+// Mirrors background.js's Chrome implementation. api.storage.session falls
+// back to api.storage.local automatically on older Firefox builds that
+// predate storage.session support (see storageArea() in browser-api.js), so
+// this works the same way across versions, just with different persistence
+// guarantees on very old Firefox.
+
+const SESSION_START_KEY = 'sessionStartMs';
+
+async function getSessionStartMs() {
+  const { [SESSION_START_KEY]: start } = await api.storage.session.get(SESSION_START_KEY);
+  if (start) return start;
+  const now = Date.now();
+  await api.storage.session.set({ [SESSION_START_KEY]: now });
+  return now;
+}
+
+const SITE_TIME_KEY = 'siteTime';
+
+function recordSiteTime(host, ms) {
+  if (!host || !ms || ms <= 0) return Promise.resolve({ ok: false });
+  return enqueueStorageWrite('siteTime', () => _doRecordSiteTime(host, ms));
+}
+
+async function _doRecordSiteTime(host, ms) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { [SITE_TIME_KEY]: data = {} } = await api.storage.local.get(SITE_TIME_KEY);
+
+  if (!data[host]) data[host] = { total: 0, days: {} };
+  data[host].total += ms;
+  data[host].days[today] = (data[host].days[today] ?? 0) + ms;
+
+  const days = data[host].days;
+  const dayKeys = Object.keys(days).sort();
+  if (dayKeys.length > 90) {
+    for (const old of dayKeys.slice(0, dayKeys.length - 90)) delete days[old];
+  }
+
+  await api.storage.local.set({ [SITE_TIME_KEY]: data });
+  return { ok: true };
+}
+
+async function getSiteTime() {
+  return enqueueStorageWrite('siteTime', async () => {
+    const { [SITE_TIME_KEY]: data = {} } = await api.storage.local.get(SITE_TIME_KEY);
+    return data;
+  });
+}
+
+async function clearSiteTime() {
+  return enqueueStorageWrite('siteTime', async () => {
+    await api.storage.local.set({ [SITE_TIME_KEY]: {} });
+    return { ok: true };
+  });
 }

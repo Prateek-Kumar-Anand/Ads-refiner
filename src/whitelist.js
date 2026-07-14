@@ -1,5 +1,7 @@
 // src/whitelist.js — Domain whitelist management (ES module for Chrome)
 
+import { enqueueStorageWrite } from './storage-queue.js';
+
 const STORAGE_KEY = 'domainWhitelist';
 
 /** Load whitelist from storage and return as a Set. */
@@ -12,21 +14,25 @@ export async function loadWhitelist() {
 export async function addToWhitelist(domain) {
   const clean = normalizeDomain(domain);
   if (!clean) return { ok: false, error: 'Invalid domain.' };
-  const { [STORAGE_KEY]: list = [] } = await chrome.storage.local.get(STORAGE_KEY);
-  if (!list.includes(clean)) {
-    list.push(clean);
-    await chrome.storage.local.set({ [STORAGE_KEY]: list });
-  }
-  return { ok: true, domain: clean };
+  return enqueueStorageWrite('domainWhitelist', async () => {
+    const { [STORAGE_KEY]: list = [] } = await chrome.storage.local.get(STORAGE_KEY);
+    if (!list.includes(clean)) {
+      list.push(clean);
+      await chrome.storage.local.set({ [STORAGE_KEY]: list });
+    }
+    return { ok: true, domain: clean };
+  });
 }
 
 /** Remove a domain from the whitelist. */
 export async function removeFromWhitelist(domain) {
   const clean = normalizeDomain(domain);
-  const { [STORAGE_KEY]: list = [] } = await chrome.storage.local.get(STORAGE_KEY);
-  const updated = list.filter((d) => d !== clean);
-  await chrome.storage.local.set({ [STORAGE_KEY]: updated });
-  return { ok: true };
+  return enqueueStorageWrite('domainWhitelist', async () => {
+    const { [STORAGE_KEY]: list = [] } = await chrome.storage.local.get(STORAGE_KEY);
+    const updated = list.filter((d) => d !== clean);
+    await chrome.storage.local.set({ [STORAGE_KEY]: updated });
+    return { ok: true };
+  });
 }
 
 /** Return all whitelisted domains as an array. */

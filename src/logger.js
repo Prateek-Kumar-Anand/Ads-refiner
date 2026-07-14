@@ -1,5 +1,10 @@
 // src/logger.js — Structured event logger with JSON/CSV export
 // BUG FIX #11: CSV header row was unquoted while data rows were quoted — now consistent.
+// BUG FIX: logEvent/incrementCounter now serialized via storage-queue.js —
+// see that file for why unserialized writes silently dropped ad/tracker
+// block counts and log entries under normal, frequent usage.
+
+import { enqueueStorageWrite } from './storage-queue.js';
 
 const LOG_KEY = 'eventLog';
 const MAX_LOG_ENTRIES = 500;
@@ -11,10 +16,12 @@ export async function logEvent(type, details = {}) {
     timestamp: new Date().toISOString(),
     ...details
   };
-  const { [LOG_KEY]: log = [] } = await chrome.storage.local.get(LOG_KEY);
-  log.unshift(entry);
-  await chrome.storage.local.set({ [LOG_KEY]: log.slice(0, MAX_LOG_ENTRIES) });
-  return entry;
+  return enqueueStorageWrite('eventLog', async () => {
+    const { [LOG_KEY]: log = [] } = await chrome.storage.local.get(LOG_KEY);
+    log.unshift(entry);
+    await chrome.storage.local.set({ [LOG_KEY]: log.slice(0, MAX_LOG_ENTRIES) });
+    return entry;
+  });
 }
 
 export async function getLog(filter = {}) {
@@ -51,10 +58,12 @@ export async function exportAsCsv() {
 }
 
 export async function incrementCounter(name) {
-  const { counters = {} } = await chrome.storage.local.get('counters');
-  counters[name] = (counters[name] ?? 0) + 1;
-  await chrome.storage.local.set({ counters });
-  return counters[name];
+  return enqueueStorageWrite('counters', async () => {
+    const { counters = {} } = await chrome.storage.local.get('counters');
+    counters[name] = (counters[name] ?? 0) + 1;
+    await chrome.storage.local.set({ counters });
+    return counters[name];
+  });
 }
 
 export async function getCounters() {

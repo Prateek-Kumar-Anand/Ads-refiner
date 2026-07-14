@@ -5,6 +5,19 @@
 
   var api = g.adsRefinerApi || null;
 
+  // BUG FIX: addToWhitelist/removeFromWhitelist used to do a plain
+  // get-then-set with no serialization, so two near-simultaneous calls could
+  // race and one write would silently clobber the other — same class of bug
+  // fixed in whitelist.js (Chrome) via storage-queue.js. This file is loaded
+  // both from background-firefox.html (where storage-queue-browser.js is
+  // available) and as a content script (where it isn't, though nothing in
+  // content.js currently calls these functions there) — so fall back to
+  // running unserialized rather than throwing if the queue isn't present.
+  function enqueue(queueKey, fn) {
+    if (g.adsRefinerStorageQueue) return g.adsRefinerStorageQueue.enqueueStorageWrite(queueKey, fn);
+    return fn();
+  }
+
   function normalizeDomain(input) {
     if (!input) return null;
     try {
@@ -42,24 +55,28 @@
   function addToWhitelist(domain) {
     var clean = normalizeDomain(domain);
     if (!clean) return Promise.resolve({ ok: false, error: 'Invalid domain.' });
-    return getStorage().get(STORAGE_KEY).then(function(result) {
-      var list = result[STORAGE_KEY] || [];
-      if (!list.includes(clean)) {
-        list.push(clean);
-        return getStorage().set({ [STORAGE_KEY]: list }).then(function() {
-          return { ok: true, domain: clean };
-        });
-      }
-      return { ok: true, domain: clean };
+    return enqueue('domainWhitelist', function() {
+      return getStorage().get(STORAGE_KEY).then(function(result) {
+        var list = result[STORAGE_KEY] || [];
+        if (!list.includes(clean)) {
+          list.push(clean);
+          return getStorage().set({ [STORAGE_KEY]: list }).then(function() {
+            return { ok: true, domain: clean };
+          });
+        }
+        return { ok: true, domain: clean };
+      });
     });
   }
 
   function removeFromWhitelist(domain) {
     var clean = normalizeDomain(domain);
-    return getStorage().get(STORAGE_KEY).then(function(result) {
-      var list = (result[STORAGE_KEY] || []).filter(function(d) { return d !== clean; });
-      return getStorage().set({ [STORAGE_KEY]: list }).then(function() {
-        return { ok: true };
+    return enqueue('domainWhitelist', function() {
+      return getStorage().get(STORAGE_KEY).then(function(result) {
+        var list = (result[STORAGE_KEY] || []).filter(function(d) { return d !== clean; });
+        return getStorage().set({ [STORAGE_KEY]: list }).then(function() {
+          return { ok: true };
+        });
       });
     });
   }
