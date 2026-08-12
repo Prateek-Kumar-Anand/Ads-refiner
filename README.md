@@ -4,121 +4,150 @@
 
 # 🛡️ Ads Refiner — Safe Link Guard
 
-**A 100% free, privacy-first Chrome extension that blocks ads & trackers, warns you before phishing links, stops risky downloads, and shows you exactly what's happening on every site you visit.**
+**A free, privacy-first browser extension that blocks ads and trackers, warns about suspicious links, blocks risky downloads, and helps you understand what is happening in your browser.**
 
 <p>
-  <img src="https://img.shields.io/badge/Manifest-V3-4f46e5?style=for-the-badge&logo=googlechrome&logoColor=white" />
-  <img src="https://img.shields.io/badge/Chrome-116%2B-4f46e5?style=for-the-badge&logo=googlechrome&logoColor=white" />
-  <img src="https://img.shields.io/badge/Price-100%25%20Free-059669?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Accounts-None%20Required-059669?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Manifest-V3-4f46e5?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Manifest V3" />
+  <img src="https://img.shields.io/badge/Chrome-116%2B-4f46e5?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome 116+" />
+  <img src="https://img.shields.io/badge/Price-100%25%20Free-059669?style=for-the-badge" alt="100% free" />
+  <img src="https://img.shields.io/badge/Accounts-None%20Required-059669?style=for-the-badge" alt="No accounts required" />
 </p>
 
 </div>
 
 ---
 
-## ✨ Why Ads Refiner?
+## ✨ What is Ads Refiner?
 
-No sign-ups. No API keys. No subscriptions. No data leaving your browser. Ads Refiner runs entirely **locally**, using Chrome's native `declarativeNetRequest` API for blazing-fast ad/tracker blocking — plus a built-in safety layer that watches links and downloads so you don't have to.
+Ads Refiner is a lightweight browser extension for safer, cleaner browsing. It uses Chrome's native `declarativeNetRequest` API to block ad and tracker requests quickly, then adds local safety checks for suspicious links, risky downloads, whitelist management, dashboards, and browsing statistics.
+
+No sign-ups, API keys, subscriptions, or cloud accounts are required. Your settings, logs, counters, whitelist, and dashboard data stay in your browser through local extension storage.
 
 ---
 
 ## 🚀 Features
 
-### 🧱 Ad & Tracker Blocking
-- 🚫 Blocks ad-network and tracker requests using fast, native **`declarativeNetRequest`** rules (`rules/ads.json`, `rules/trackers.json`)
-- 🎭 **Cosmetic blocking** — automatically hides leftover ad containers/slots injected into pages
-- 🔢 Live counters for **ads blocked**, **trackers blocked**, and **URLs checked**
+### 🧱 Ad and Tracker Blocking
+
+- Blocks known ad-network requests with static rules from `rules/ads.json`.
+- Blocks known tracker requests with static rules from `rules/trackers.json`.
+- Hides leftover page ad containers with cosmetic blocking.
+- Shows live counters for blocked ads, blocked trackers, and checked URLs.
 
 ### ⚠️ Suspicious Link Guard
-- 🔍 Scans clicked links and top-level navigation for red flags:
-  - Non-HTTPS pages
-  - Raw IP-address URLs
-  - Punycode / lookalike domains
-  - Misleading `@` links
-  - High-risk executable download types
-- 🖐️ Shows a **warning interstitial** before you land on a suspicious page — choose **Go back** or **Go on anyway**
+
+Ads Refiner checks clicked links and top-level navigation for warning signs, including:
+
+- Non-HTTPS pages.
+- Raw IP-address URLs.
+- Punycode and lookalike-domain patterns.
+- Misleading links that include `@` characters.
+- High-risk executable download types.
+
+When a link looks suspicious, Ads Refiner shows a warning page before you continue.
 
 ### ⬇️ Download Protection
-- 🛑 Automatically **cancels risky downloads** (e.g. suspicious executables)
-- 🔔 Sends a desktop notification when a risky download is blocked
-- 🧹 Opens a **Safety Panel** to review flagged tabs/downloads and choose **Ignore it** or **Solve it by deleting**
+
+- Detects risky download URLs and file types.
+- Cancels suspicious downloads when protection is enabled.
+- Shows a desktop notification for blocked downloads.
+- Lets you review flagged items from the Safety Panel.
 
 ### 📊 Analytics Dashboard
-- 📈 **Block-type breakdown** chart (ads vs. trackers vs. links vs. downloads)
-- 📅 **7-day activity** timeline chart
-- 🌐 **Domain reputation** tracking, stored locally
-- ✅ **Whitelist manager** — exempt trusted domains in one click
-- ⬇️ **Export your data** as JSON or CSV, or clear the log anytime
+
+- View a breakdown of blocked ads, trackers, suspicious links, and risky downloads.
+- Review recent security events and browsing-safety history.
+- Track domain reputation locally.
+- Export activity data as JSON or CSV.
+- Clear stored logs when you want a fresh start.
 
 ### 🖥️ System Dashboard
-- 🟢 **Live RAM usage** monitor with a real-time progress bar
-- ⏱️ **Per-site time tracking** — see how much time you spend on each domain today and all-time
-- 📊 Session & daily stats at a glance from the popup's **System** tab
 
-### ⚙️ Full Control via Settings
-Every protection layer can be toggled independently:
+- Monitor browser RAM usage from the extension dashboard.
+- Track time spent per site for the current day and all time.
+- Review session and daily browsing stats.
 
-| Toggle | What it does |
-|---|---|
-| 🛡 Enable protection | Master on/off switch |
-| 🧱 Block ads | Network-level ad blocking |
-| 🎯 Block trackers | Network-level tracker blocking |
-| ⚠️ Warn on suspicious links | Phishing/lookalike-link interstitial |
-| ⬇️ Block risky downloads | Cancels high-risk file downloads |
-| 🎭 Cosmetic ad blocking | Hides ad containers in the page DOM |
+### ⚙️ User Controls
 
-### 🔒 Privacy-Respecting by Design
-- 🖼️ Canvas-generated **letter avatars** instead of fetching real favicons (no third-party favicon leaks)
-- 💾 All stats, logs, and whitelists are stored **locally** via `chrome.storage` — nothing is sent anywhere
+Each protection layer can be enabled or disabled independently:
+
+| Setting | Purpose |
+| --- | --- |
+| Enable protection | Master on/off switch for Ads Refiner protections. |
+| Block ads | Enables network-level ad blocking. |
+| Block trackers | Enables network-level tracker blocking. |
+| Warn on suspicious links | Shows an interstitial before suspicious links. |
+| Block risky downloads | Cancels high-risk downloads. |
+| Cosmetic ad blocking | Hides visible ad slots left on pages. |
+
+---
+
+## 🔒 Privacy
+
+Ads Refiner is designed to avoid unnecessary external requests:
+
+- Data is stored locally with `chrome.storage`.
+- Dashboard stats and logs are kept on your device.
+- Letter-based favicons are generated locally with canvas instead of fetching third-party favicon images.
+- No account is required to use the extension.
 
 ---
 
 ## 📦 Installation
 
-> Not yet on the Chrome Web Store? Load it manually — takes less than a minute:
+### Chrome / Chromium-based browsers
 
-1. **Download or clone** this repository
+1. Download or clone this repository:
+
    ```bash
    git clone https://github.com/Prateek-Kumar-Anand/Ads-refiner-extension.git
    ```
-2. Open Chrome and go to `chrome://extensions`
-3. Toggle on **Developer mode** (top-right)
-4. Click **Load unpacked**
-5. Select the cloned project folder
-6. 📌 Pin **Ads Refiner** to your toolbar — and you're protected!
+
+2. Open `chrome://extensions` in your browser.
+3. Enable **Developer mode**.
+4. Click **Load unpacked**.
+5. Select the cloned project folder.
+6. Pin **Ads Refiner** to your toolbar.
+
+### Firefox build files
+
+This repository also includes Firefox-oriented files such as `manifest.firefox.json` and `src/background-firefox.js`. Use those files when packaging or testing the Firefox variant.
 
 ---
 
 ## 🖱️ Usage
 
-Click the toolbar icon to open the popup, which has two tabs:
+Click the Ads Refiner toolbar icon to open the popup.
 
-- **🛡 Protection** — live stats, all the on/off toggles, your whitelist, a list of recently flagged items, and a **🔍 Scan browser now** button
-- **🖥 System** — RAM usage, today's/session stats, and per-site time spent (with a link to the full **System Dashboard**)
+- **Protection tab**: View live stats, toggle protections, manage the whitelist, review recent flagged items, and run a browser scan.
+- **System tab**: View RAM usage, session stats, daily stats, and per-site time tracking.
 
-From the popup you can also jump into:
-- **📊 Analytics Dashboard** — deep dive into block history, charts, reputation & exports
-- **⚙️ Settings** — fine-tune every protection toggle
+Additional pages are available from the popup:
 
-If a link looks suspicious, you'll see a **warning page** first — letting you back out safely or proceed at your own risk. If a risky download is blocked, a notification will let you review and resolve it from the Safety Panel.
+- **Analytics Dashboard** for charts, history, reputation data, export tools, and log cleanup.
+- **Settings** for configuring every protection option.
+- **System Dashboard** for RAM and time-tracking details.
+
+If Ads Refiner detects a suspicious link, it opens a warning page first. If a download looks risky, Ads Refiner can cancel it and notify you.
 
 ---
 
-## 🔐 Permissions — and Why They're Needed
+## 🔐 Permissions
 
-| Permission | Why Ads Refiner needs it |
-|---|---|
-| `declarativeNetRequest` | Block ad & tracker requests natively, without slowing down page loads |
-| `webNavigation` | Detect top-level navigation to check links before the page loads |
-| `tabs` | Inspect URLs/tabs to power the Safety Panel and System Dashboard |
-| `downloads` | Detect and cancel risky downloads |
-| `storage` | Save your settings, stats, whitelist, and logs locally |
-| `notifications` | Alert you when a risky download is blocked |
-| `contextMenus` | Right-click menu actions |
-| `<all_urls>` (host permission) | Apply ad-blocking and link-safety checks on any site you visit |
+| Permission | Why it is needed |
+| --- | --- |
+| `declarativeNetRequest` | Blocks ad and tracker requests using native browser rules. |
+| `declarativeNetRequestFeedback` | Reads rule-match feedback for local stats and diagnostics. |
+| `downloads` | Detects and cancels risky downloads. |
+| `notifications` | Alerts you when a risky download is blocked. |
+| `storage` | Saves settings, logs, counters, and whitelist entries locally. |
+| `history` | Supports local browser scan and history-aware safety checks. |
+| `tabs` | Reads tab URLs for safety checks and dashboard features. |
+| `webNavigation` | Checks top-level navigation before pages load. |
+| `contextMenus` | Adds right-click extension actions. |
+| `<all_urls>` | Allows protection and content scripts to run on visited sites. |
 
-> ⚠️ **Note:** Browser extensions can't scan your entire operating system or delete arbitrary system files. Ads Refiner focuses on what Chrome exposes to extensions — URLs, open tabs, and downloads.
+> **Note:** Browser extensions cannot scan your whole operating system or delete arbitrary system files. Ads Refiner only works with browser-exposed data such as tabs, URLs, page content, and downloads.
 
 ---
 
@@ -126,53 +155,51 @@ If a link looks suspicious, you'll see a **warning page** first — letting you 
 
 ```text
 Ads-refiner-extension/
-├── manifest.json              # Extension config — permissions, rules, service worker
+├── manifest.json                 # Chrome extension manifest
+├── manifest.firefox.json         # Firefox-oriented manifest
 ├── rules/
-│   ├── ads.json                # Static ad-blocking network rules
-│   └── trackers.json           # Static tracker-blocking network rules
+│   ├── ads.json                   # Static ad-blocking rules
+│   └── trackers.json              # Static tracker-blocking rules
 └── src/
-    ├── background.js           # Core service worker — navigation, downloads, notifications
-    ├── content.js               # Cosmetic ad hiding + in-page link checks
-    ├── timetracker.js           # Per-site time tracking
-    ├── favicon.js               # Privacy-safe canvas favicons
-    ├── reputation.js            # Domain reputation logic
-    ├── whitelist.js             # Whitelist management
-    ├── safety.js                # URL & download risk heuristics
-    ├── popup.html / popup.js    # Toolbar popup (Protection + System tabs)
-    ├── options.html / options.js# Settings page
-    ├── dashboard.html / .js     # Analytics dashboard
-    ├── system-dashboard.html/.js# RAM & time-tracking dashboard
-    └── warning.html / warning.js# Suspicious-link interstitial
+    ├── background.js              # Chrome service worker
+    ├── background-firefox.js      # Firefox background script
+    ├── browser-api.js             # Browser API helpers
+    ├── content.js                 # Cosmetic blocking and in-page link checks
+    ├── content.css                # Content-script styles
+    ├── dashboard.html / .js       # Analytics dashboard
+    ├── favicon.js                 # Privacy-safe generated favicons
+    ├── options.html / .js         # Settings page
+    ├── popup.html / .js           # Toolbar popup UI
+    ├── reputation.js              # Domain reputation helpers
+    ├── safety.js                  # URL and download risk checks
+    ├── system-dashboard.html / .js# System dashboard
+    ├── timetracker.js             # Per-site time tracking
+    ├── warning.html / .js         # Suspicious-link warning page
+    └── whitelist.js               # Whitelist management
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-<p>
-  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" />
-  <img src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white" />
-  <img src="https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white" />
-  <img src="https://img.shields.io/badge/Chrome%20Extensions%20API-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" />
-</p>
+- JavaScript
+- HTML
+- CSS
+- Chrome Extensions Manifest V3
+- Native `declarativeNetRequest` rules
 
-Built with **vanilla JS** — no frameworks, no build step, no bloat.
+Ads Refiner uses vanilla JavaScript and does not require a build step.
 
 ---
 
 ## 🤝 Contributing
 
-Found a bug or have an idea for a new safety check? Issues and pull requests are welcome! 🙌
-We will kindly accept your issue and try to solve it as fast as possible.
-
----
-
-##
+Bug reports, ideas, and pull requests are welcome. If you find a problem or want to suggest a new safety check, open an issue with clear reproduction steps or a detailed feature request.
 
 ---
 
 <div align="center">
 
-⭐ **WE WISH YOU HAVE SAFE BROWESING AND EASE TO USE THIS CHROME EXTENSION !** ⭐
+⭐ **Stay safe, browse cleanly, and enjoy Ads Refiner!** ⭐
 
 </div>
