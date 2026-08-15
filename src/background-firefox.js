@@ -40,6 +40,10 @@ const DEFAULT_SETTINGS = {
   warnLinks: true,
   blockRiskyDownloads: true,
   cosmeticBlocking: true,
+  // SECURITY/PRIVACY FIX: see matching comment in background.js — CHECK_BREACH
+  // is now gated behind this disclosed, user-controllable setting instead of
+  // firing unconditionally while the warning page claimed no network activity.
+  breachCheck: true,
   blockedDownloads: [],
   lastScan: null
 };
@@ -226,6 +230,12 @@ api.notifications.onClicked?.addListener(async (id) => {
 // ─── Messages ─────────────────────────────────────────────────────────────────
 
 api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // SECURITY FIX: defense-in-depth sender check — see matching comment in
+  // background.js. Without `externally_connectable` in the manifest, only
+  // this extension's own content scripts/pages can reach onMessage at all,
+  // but every handler below performs a privileged action, so verify explicitly.
+  if (sender.id !== api.raw.runtime.id) return false;
+
   const p = handleMessage(msg);
   if (globalThis.browser) return p; // Firefox: return Promise
   p.then(sendResponse).catch((e) => sendResponse({ ok: false, error: e.message }));
@@ -256,7 +266,12 @@ async function handleMessage(msg) {
     case 'GET_COUNTERS':     return getCountersData();
     // FIX #4: GET_REPUTATION and CHECK_BREACH were completely missing from Firefox
     case 'GET_REPUTATION':   return getAllReputationData();
-    case 'CHECK_BREACH':     return checkDomainBreachFF(msg.domain);
+    case 'CHECK_BREACH': {
+      // PRIVACY FIX: gate the only network call this extension makes behind
+      // a disclosed, user-controllable setting — see background.js.
+      if (runtimeSettings.breachCheck === false) return [];
+      return checkDomainBreachFF(msg.domain);
+    }
     case 'OPEN_DASHBOARD':
       await api.tabs.create({ url: DASHBOARD_PAGE });
       return { ok: true };
@@ -417,8 +432,15 @@ async function exportCsv() {
   const keys = [...new Set(log.flatMap(Object.keys))];
   // FIX #11: Header row is now also quoted for consistency
   const header = keys.map((k) => `"${k}"`).join(',');
-  const rows = log.map((e) => keys.map((k) => `"${String(Array.isArray(e[k]) ? e[k].join('; ') : (e[k] ?? '')).replace(/"/g,'""')}"`).join(','));
+  // SECURITY FIX: CSV/formula injection (CWE-1236) — see matching guard and
+  // comment in logger.js's exportAsCsv. A page-supplied download filename
+  // could start with =, +, -, or @ and be executed as a formula by Excel/Sheets.
+  const rows = log.map((e) => keys.map((k) => `"${csvFormulaGuard(String(Array.isArray(e[k]) ? e[k].join('; ') : (e[k] ?? ''))).replace(/"/g,'""')}"`).join(','));
   return [header, ...rows].join('\n');
+}
+
+function csvFormulaGuard(s) {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
 }
 
 async function incrementCounter(name) {

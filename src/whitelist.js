@@ -41,11 +41,23 @@ export async function getWhitelist() {
   return list;
 }
 
+// BUG/SECURITY FIX: previously this validated the input by constructing a
+// URL but then returned the raw, un-parsed string — so "evil.com@trusted.com"
+// (userinfo syntax) passed validation (it's a legal URL: user "evil.com" at
+// host "trusted.com") yet got stored verbatim as "evil.com@trusted.com".
+// That string can never equal any real page's `url.hostname`, so the entry
+// silently never matches anything: not exploitable, but confusing and
+// broken — a user could believe such an entry grants trust it doesn't.
+// Same problem for "example.com:8080" (port never appears in url.hostname).
+// Now: parse it, and only accept input that reduces to a bare hostname with
+// no userinfo/port, storing the canonical parsed hostname.
 function normalizeDomain(input = '') {
   try {
     const raw = input.trim().toLowerCase().replace(/^https?:\/\//i, '').split('/')[0];
-    new URL('https://' + raw); // validates
-    return raw;
+    if (!raw) return null;
+    const url = new URL('https://' + raw);
+    if (url.username || url.password || url.port || url.hostname !== raw) return null;
+    return url.hostname;
   } catch {
     return null;
   }

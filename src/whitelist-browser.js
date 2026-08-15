@@ -18,12 +18,23 @@
     return fn();
   }
 
+  // BUG/SECURITY FIX: matches the fix in whitelist.js (Chrome) — this used
+  // to validate via `new URL()` but then return the raw, un-parsed input, so
+  // "evil.com@trusted.com" (valid userinfo syntax) passed validation and got
+  // stored verbatim instead of resolving to a hostname. Such an entry can
+  // never match a real page's hostname, so it fails closed rather than
+  // opening a bypass — but it's a confusing, broken whitelist entry a user
+  // could mistake for meaning something it doesn't. Now: reject anything
+  // that isn't a bare hostname (no userinfo, no port) and store the
+  // canonical parsed hostname.
   function normalizeDomain(input) {
     if (!input) return null;
     try {
       var raw = input.trim().toLowerCase().replace(/^https?:\/\//i, '').split('/')[0];
-      new URL('https://' + raw);
-      return raw;
+      if (!raw) return null;
+      var url = new URL('https://' + raw);
+      if (url.username || url.password || url.port || url.hostname !== raw) return null;
+      return url.hostname;
     } catch (_) { return null; }
   }
 

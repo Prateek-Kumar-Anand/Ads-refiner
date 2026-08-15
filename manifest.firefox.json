@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Ads Refiner Safe Link Guard",
   "description": "Blocks ads & trackers, warns about phishing links, download protection. 100% free \u2014 no API keys, no accounts, no subscriptions.",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "applications": {
     "gecko": {
       "id": "ads-refiner@example.com",
@@ -39,9 +39,6 @@
       ],
       "js": [
         "src/crossbrowser.js",
-        "src/browser-api.js",
-        "src/safety-browser.js",
-        "src/whitelist-browser.js",
         "src/content.js",
         "src/timetracker.js"
       ],
@@ -52,9 +49,6 @@
     }
   ],
   "web_accessible_resources": [
-    "src/browser-api.js",
-    "src/safety-browser.js",
-    "src/whitelist-browser.js",
     "src/warning.html",
     "src/warning.js",
     "src/dashboard.html",

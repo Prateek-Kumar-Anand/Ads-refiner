@@ -186,7 +186,17 @@ document.addEventListener('click', (e) => {
     // BUG FIX: always clean up pendingWarnings so link is usable again
     pendingWarnings.delete(anchor);
     if (!result || result.level === 'safe') {
-      // Background says safe — remove badge and allow
+      // Background says safe (e.g. the domain is whitelisted). The quick
+      // local heuristic that triggered this check (punycode, an "@" in the
+      // URL, etc.) has no knowledge of the whitelist and will flag the same
+      // href again on every future click, since it can't see this result.
+      // BUG FIX: without marking the anchor allowed here, that mismatch
+      // made whitelisting a punycode/"@"-containing domain unusable — every
+      // click re-triggered the same check and swallowed the click forever,
+      // with no way to actually navigate. Mark it allowed so the next click
+      // on this element goes straight through (matches the double-click
+      // fast-path above).
+      anchor.dataset.arAllowed = 'true';
       removeInlineWarning(anchor);
       return;
     }

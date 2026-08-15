@@ -13,6 +13,18 @@ const reasons = (() => {
   catch { return []; }
 })();
 
+// SECURITY FIX: this page is web-accessible on <all_urls> so ANY site can
+// link or iframe it with fully attacker-chosen query params (that's required
+// for the extension's own redirect flow to work) — so `target` must never be
+// treated as a trusted, already-validated URL. Modern extension-page CSP
+// blocks javascript: URI navigation, but this check makes that safe by
+// construction instead of leaning on CSP alone as the only backstop.
+const SAFE_NAV_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+function isSafeNavTarget(u) {
+  try { return SAFE_NAV_PROTOCOLS.has(new URL(u).protocol); }
+  catch { return false; }
+}
+
 // ─── Populate ─────────────────────────────────────────────────────────────────
 
 document.getElementById('target').textContent = target;
@@ -74,6 +86,14 @@ document.getElementById('goBack').addEventListener('click', () => {
 });
 
 document.getElementById('continue').addEventListener('click', () => {
+  // SECURITY FIX: refuse to navigate to anything other than a web (or
+  // mailto) address, no matter what this page was opened with.
+  if (!isSafeNavTarget(target)) {
+    const msg = document.getElementById('wlMsg');
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '✗ This address can\u2019t be opened.';
+    return;
+  }
   // BUG FIX: Navigate only after ALLOW_URL has been stored by background.
   // Previously navigated immediately after await which could fire before
   // the service worker had written to storage.session, causing re-block.

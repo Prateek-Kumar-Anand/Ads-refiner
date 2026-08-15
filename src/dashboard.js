@@ -44,10 +44,13 @@ function renderTypeChart(log) {
   const max = sorted[0]?.[1] ?? 1;
 
   const container = $('typeChart');
-  container.innerHTML = '';
+  container.replaceChildren();
 
   if (!sorted.length) {
-    container.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No events yet.</p>';
+    const p = document.createElement('p');
+    p.style.cssText = 'color:var(--muted);font-size:0.85rem';
+    p.textContent = 'No events yet.';
+    container.append(p);
     return;
   }
 
@@ -173,25 +176,56 @@ function applyLogFilter() {
   $('logMeta').textContent = `${rows.length} entries`;
 
   const tbody = $('logBody');
-  tbody.innerHTML = '';
+  tbody.replaceChildren();
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1rem">No events.</td></tr>';
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.style.cssText = 'text-align:center;color:var(--muted);padding:1rem';
+    td.textContent = 'No events.';
+    tr.append(td);
+    tbody.append(tr);
     return;
   }
 
+  // SECURITY FIX: this row used to build markup with a template literal and
+  // innerHTML, escaping `details` but interpolating `type`/`level` raw next
+  // to it. Both happen to only ever hold extension-generated literal strings
+  // today, but mixing escaped and unescaped values in one template is a
+  // regression trap in a page that runs with full extension privileges
+  // (history, downloads, tabs). Build every cell as safe DOM instead so
+  // there's no innerHTML path left to accidentally reintroduce.
   for (const e of rows.slice(0, 200)) {
-    const tr = document.createElement('tr');
     const time = new Date(e.timestamp).toLocaleString();
     const details = e.url || e.filename || JSON.stringify(e).slice(0, 80);
     const level = e.level ?? '';
     const typeClass = e.type?.includes('download') ? 'badge-dl' :
                       e.type?.includes('tracker')  ? 'badge-tracker' : 'badge-url';
-    tr.innerHTML = `
-      <td style="white-space:nowrap;font-size:0.75rem">${time}</td>
-      <td><span class="badge ${typeClass}">${(e.type ?? '').replace(/_/g,' ')}</span></td>
-      <td>${escHtml(String(details))}</td>
-      <td><span style="font-weight:700;color:${level === 'dangerous' ? 'var(--danger)' : level === 'suspicious' ? '#b45309' : 'var(--safe)'}">${level}</span></td>`;
+
+    const tr = document.createElement('tr');
+
+    const tdTime = document.createElement('td');
+    tdTime.style.cssText = 'white-space:nowrap;font-size:0.75rem';
+    tdTime.textContent = time;
+
+    const tdType = document.createElement('td');
+    const typeBadge = document.createElement('span');
+    typeBadge.className = `badge ${typeClass}`;
+    typeBadge.textContent = (e.type ?? '').replace(/_/g, ' ');
+    tdType.append(typeBadge);
+
+    const tdDetails = document.createElement('td');
+    tdDetails.textContent = String(details);
+
+    const tdLevel = document.createElement('td');
+    const levelSpan = document.createElement('span');
+    levelSpan.style.fontWeight = '700';
+    levelSpan.style.color = level === 'dangerous' ? 'var(--danger)' : level === 'suspicious' ? '#b45309' : 'var(--safe)';
+    levelSpan.textContent = level;
+    tdLevel.append(levelSpan);
+
+    tr.append(tdTime, tdType, tdDetails, tdLevel);
     tbody.append(tr);
   }
 }
@@ -213,25 +247,58 @@ function renderReputation(rep) {
   const entries = Object.values(rep).sort((a, b) => b.flagCount - a.flagCount).slice(0, 100);
 
   if (!entries.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1rem">No reputation data yet.</td></tr>';
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 6;
+    td.style.cssText = 'text-align:center;color:var(--muted);padding:1rem';
+    td.textContent = 'No reputation data yet.';
+    tr.append(td);
+    tbody.append(tr);
     return;
   }
 
-  tbody.innerHTML = '';
+  tbody.replaceChildren();
   for (const e of entries) {
     const score = e.score ?? 50;
     const color = score >= 80 ? '#047857' : score >= 50 ? '#b45309' : '#c2410c';
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>${escHtml(e.domain)}</strong></td>
-      <td>
-        <span class="trust-bar" style="background:linear-gradient(to right,${color} ${score}%,var(--border) ${score}%)"></span>
-        <span style="font-size:0.78rem;margin-left:0.4rem;color:${color}">${score}/100</span>
-      </td>
-      <td>${e.visits ?? 0}</td>
-      <td style="color:${e.flagCount > 0 ? 'var(--danger)' : 'var(--muted)'}">${e.flagCount ?? 0}</td>
-      <td>${e.hasKnownBreach ? '<span style="color:var(--danger)">⚠ Yes</span>' : '—'}</td>
-      <td style="font-size:0.75rem;white-space:nowrap">${e.lastUpdated ? new Date(e.lastUpdated).toLocaleDateString() : '—'}</td>`;
+
+    const tdDomain = document.createElement('td');
+    const strong = document.createElement('strong');
+    strong.textContent = e.domain;
+    tdDomain.append(strong);
+
+    const tdScore = document.createElement('td');
+    const bar = document.createElement('span');
+    bar.className = 'trust-bar';
+    bar.style.background = `linear-gradient(to right,${color} ${score}%,var(--border) ${score}%)`;
+    const scoreLabel = document.createElement('span');
+    scoreLabel.style.cssText = `font-size:0.78rem;margin-left:0.4rem;color:${color}`;
+    scoreLabel.textContent = `${score}/100`;
+    tdScore.append(bar, scoreLabel);
+
+    const tdVisits = document.createElement('td');
+    tdVisits.textContent = e.visits ?? 0;
+
+    const tdFlags = document.createElement('td');
+    tdFlags.style.color = e.flagCount > 0 ? 'var(--danger)' : 'var(--muted)';
+    tdFlags.textContent = e.flagCount ?? 0;
+
+    const tdBreach = document.createElement('td');
+    if (e.hasKnownBreach) {
+      const span = document.createElement('span');
+      span.style.color = 'var(--danger)';
+      span.textContent = '⚠ Yes';
+      tdBreach.append(span);
+    } else {
+      tdBreach.textContent = '—';
+    }
+
+    const tdLast = document.createElement('td');
+    tdLast.style.cssText = 'font-size:0.75rem;white-space:nowrap';
+    tdLast.textContent = e.lastUpdated ? new Date(e.lastUpdated).toLocaleDateString() : '—';
+
+    tr.append(tdDomain, tdScore, tdVisits, tdFlags, tdBreach, tdLast);
     tbody.append(tr);
   }
 }
@@ -243,19 +310,28 @@ let _whitelist = [];
 function renderWhitelist(list) {
   _whitelist = list;
   const el = $('wlList');
-  el.innerHTML = '';
+  el.replaceChildren();
   if (!list.length) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No domains whitelisted.</p>';
+    const p = document.createElement('p');
+    p.style.cssText = 'color:var(--muted);font-size:0.85rem';
+    p.textContent = 'No domains whitelisted.';
+    el.append(p);
     return;
   }
   for (const domain of list) {
     const div = document.createElement('div');
     div.className = 'wl-item';
-    div.innerHTML = `<span>${escHtml(domain)}</span><button title="Remove" data-domain="${escAttr(domain)}">✕</button>`;
-    div.querySelector('button').onclick = async () => {
+    const span = document.createElement('span');
+    span.textContent = domain;
+    const button = document.createElement('button');
+    button.title = 'Remove';
+    button.dataset.domain = domain;
+    button.textContent = '✕';
+    button.onclick = async () => {
       await send({ type: 'WHITELIST_REMOVE', domain });
       renderWhitelist(_whitelist.filter((d) => d !== domain));
     };
+    div.append(span, button);
     el.append(div);
   }
 }
@@ -301,11 +377,6 @@ function dl(content, name, type) {
   a.download = name;
   a.click();
 }
-
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escAttr(s) { return escHtml(s); }
 
 // Boot
 load();

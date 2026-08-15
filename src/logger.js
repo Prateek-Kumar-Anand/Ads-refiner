@@ -51,10 +51,20 @@ export async function exportAsCsv() {
     allKeys.map((k) => {
       const v = entry[k] ?? '';
       const s = Array.isArray(v) ? v.join('; ') : String(v);
-      return `"${s.replace(/"/g, '""')}"`;
+      return `"${csvFormulaGuard(s).replace(/"/g, '""')}"`;
     }).join(',')
   );
   return [header, ...rows].join('\n');
+}
+
+// SECURITY FIX: CSV/formula injection (CWE-1236). Logged fields like a
+// download's suggested filename come from the page the user visited, so a
+// crafted `download="=cmd|'/c calc'!A0.exe"` attribute could land here. If a
+// cell opens with =, +, -, @, tab, or CR, Excel/Sheets may treat it as a
+// formula. Prefixing with a leading apostrophe forces text interpretation
+// without changing the visible value.
+function csvFormulaGuard(s) {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
 }
 
 export async function incrementCounter(name) {

@@ -6,6 +6,7 @@
 const KEYS = [
   'enabled', 'blockAds', 'blockTrackers',
   'warnLinks', 'blockRiskyDownloads', 'cosmeticBlocking',
+  'breachCheck',
 ];
 
 const $ = (id) => document.getElementById(id);

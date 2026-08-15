@@ -41,6 +41,12 @@ const DEFAULT_SETTINGS = {
   warnLinks: true,
   blockRiskyDownloads: true,
   cosmeticBlocking: true,
+  // SECURITY/PRIVACY FIX: the warning page previously claimed "no data is
+  // sent to any server" while CHECK_BREACH silently queried the HaveIBeenPwned
+  // API with every flagged domain. That claim is now accurate (see
+  // warning.html) and this lookup is a disclosed, user-controllable setting
+  // that defaults on (matching prior behavior) but can be turned off.
+  breachCheck: true,
   blockedDownloads: [],
   lastScan: null
 };
@@ -206,6 +212,14 @@ chrome.notifications.onClicked.addListener(async (id) => {
 // ─── Message Handler ──────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // SECURITY FIX: defense-in-depth sender check. Chrome only ever delivers
+  // onMessage from this extension's own content scripts/pages (this manifest
+  // declares no `externally_connectable`, so arbitrary web pages and other
+  // extensions cannot reach this listener at all) — but we verify explicitly
+  // rather than relying solely on that platform default, since every handler
+  // below performs a privileged action (storage, downloads, tabs, history).
+  if (sender.id !== chrome.runtime.id) return false;
+
   // FIX #7: Guard against SW being killed mid-message (MV3 service worker lifecycle)
   handleMessage(message)
     .then((result) => {
@@ -240,7 +254,15 @@ async function handleMessage(msg) {
     case 'EXPORT_LOG_CSV':   return exportAsCsv();
     case 'GET_COUNTERS':     return getCounters();
     case 'GET_REPUTATION':   return getAllReputation();
-    case 'CHECK_BREACH':     return checkDomainBreach(msg.domain);
+    case 'CHECK_BREACH': {
+      // PRIVACY FIX: this is the only network call this extension makes —
+      // it sends a flagged domain (never the full URL) to the free HIBP API.
+      // Gate it behind a disclosed, user-controllable setting (default: on,
+      // matching prior behavior) instead of firing unconditionally.
+      const { breachCheck } = await chrome.storage.local.get('breachCheck');
+      if (breachCheck === false) return [];
+      return checkDomainBreach(msg.domain);
+    }
     case 'OPEN_DASHBOARD':
       await chrome.tabs.create({ url: DASHBOARD_PAGE });
       return { ok: true };

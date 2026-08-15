@@ -92,6 +92,21 @@
     </div>
   </div>
 
+  <!-- Privacy -->
+  <div class="section-card">
+    <h2>🔎 Privacy</h2>
+
+    <div class="field">
+      <div class="field-info">
+        <label for="breachCheck">Data breach lookups</label>
+        <p>When a link is flagged, sends the domain only (never the full URL, never on safe links) to the
+          free HaveIBeenPwned service to check for known breaches. This is the only network request Ads
+          Refiner ever makes — turn it off to keep every check fully on-device.</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="breachCheck"><span class="slider"></span></label>
+    </div>
+  </div>
+
   <!-- Save -->
   <div class="section-card" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.25rem;">
     <span class="saved-msg" id="savedMsg"></span>
@@ -100,8 +115,9 @@
 
   <!-- Info -->
   <div class="note-box">
-    <strong>🔒 Privacy first:</strong> Every feature in Ads Refiner runs entirely inside your browser.
-    No data is sent to any external server. No accounts required. No API keys. Completely free, forever.
+    <strong>🔒 Privacy first:</strong> Ad/tracker blocking, download protection, and link risk scoring all
+    run entirely inside your browser — nothing about your browsing is sent anywhere for those. The one
+    exception is the optional data-breach lookup above. No accounts required. No API keys. Completely free, forever.
   </div>
 </div>
 

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Ads Refiner Safe Link Guard",
   "description": "Blocks ads & trackers, warns about phishing links, download protection. 100% free \u2014 no API keys, no accounts, no subscriptions.",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "minimum_chrome_version": "116",
   "permissions": [
     "declarativeNetRequest",
